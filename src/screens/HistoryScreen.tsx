@@ -14,6 +14,7 @@ import { mobileAnalysisService } from '../lib/analysis/analysis-service';
 import { Analysis } from '../types/profile';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { ShimmerStatCard, ShimmerAnalysisCard } from '../components/ui/ShimmerEffect';
 
 interface UserStats {
   totalAnalyses: number;
@@ -133,23 +134,33 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
 
   const renderStatsCards = () => (
     <View style={styles.statsContainer}>
-      <View style={[styles.statCard, { backgroundColor: '#3b82f6' }]}>
-        <Ionicons name="bar-chart" size={24} color="white" />
-        <Text style={styles.statNumber}>{stats.totalAnalyses}</Text>
-        <Text style={styles.statLabel}>Analyses</Text>
-      </View>
-      
-      <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
-        <Ionicons name="analytics" size={24} color="white" />
-        <Text style={styles.statNumber}>{stats.averageScore}</Text>
-        <Text style={styles.statLabel}>Moyenne</Text>
-      </View>
-      
-      <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
-        <Ionicons name="trophy" size={24} color="white" />
-        <Text style={styles.statNumber}>{stats.bestScore}</Text>
-        <Text style={styles.statLabel}>Meilleur</Text>
-      </View>
+      {loading ? (
+        <>
+          <ShimmerStatCard />
+          <ShimmerStatCard />
+          <ShimmerStatCard />
+        </>
+      ) : (
+        <>
+          <View style={[styles.statCard, { backgroundColor: '#3b82f6' }]}>
+            <Ionicons name="bar-chart" size={24} color="white" />
+            <Text style={styles.statNumber}>{stats.totalAnalyses}</Text>
+            <Text style={styles.statLabel}>Analyses</Text>
+          </View>
+          
+          <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
+            <Ionicons name="analytics" size={24} color="white" />
+            <Text style={styles.statNumber}>{stats.averageScore}</Text>
+            <Text style={styles.statLabel}>Moyenne</Text>
+          </View>
+          
+          <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
+            <Ionicons name="trophy" size={24} color="white" />
+            <Text style={styles.statNumber}>{stats.bestScore}</Text>
+            <Text style={styles.statLabel}>Meilleur</Text>
+          </View>
+        </>
+      )}
     </View>
   );
 
@@ -160,13 +171,20 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
         <Text style={styles.subtitle}>Vos analyses et statistiques</Text>
       </View>
 
-      <FlatList
-        data={analyses}
-        renderItem={renderAnalysisItem}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={renderStatsCards}
-        ListEmptyComponent={
-          !loading ? (
+      {loading ? (
+        <View>
+          {renderStatsCards()}
+          <ShimmerAnalysisCard />
+          <ShimmerAnalysisCard />
+          <ShimmerAnalysisCard />
+        </View>
+      ) : (
+        <FlatList
+          data={analyses}
+          renderItem={renderAnalysisItem}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={renderStatsCards}
+          ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="bar-chart-outline" size={64} color="#94a3b8" />
               <Text style={styles.emptyTitle}>Aucune analyse</Text>
@@ -174,14 +192,14 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
                 Commencez par analyser votre premier swing
               </Text>
             </View>
-          ) : null
-        }
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
+          }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 }

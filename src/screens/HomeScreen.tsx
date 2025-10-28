@@ -16,6 +16,7 @@ import { MobileProfileService, UserProfile } from '../lib/profile/mobile-profile
 import { MobileWeatherService } from '../lib/weather/mobile-weather-service';
 import WeatherCard from '../components/WeatherCard';
 import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
+import { ShimmerEffect, ShimmerStatCard } from '../components/ui/ShimmerEffect';
 
 interface HomeScreenProps {
   navigation: any;
@@ -157,37 +158,49 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
         {/* Statistiques */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: '#3b82f6' }]}>
-            <Ionicons name="bar-chart" size={24} color="white" />
-            <Text style={styles.statNumber}>
-              {loading ? '...' : stats.totalAnalyses}
-            </Text>
-            <Text style={styles.statLabel}>Analyses</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
-            <Ionicons name="analytics" size={24} color="white" />
-            <Text style={styles.statNumber}>
-              {loading ? '...' : stats.averageScore}
-            </Text>
-            <Text style={styles.statLabel}>Moyenne</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
-            <Ionicons name="trophy" size={24} color="white" />
-            <Text style={styles.statNumber}>
-              {loading ? '...' : stats.bestScore}
-            </Text>
-            <Text style={styles.statLabel}>Meilleur</Text>
-          </View>
+          {loading ? (
+            <>
+              <ShimmerStatCard />
+              <ShimmerStatCard />
+              <ShimmerStatCard />
+            </>
+          ) : (
+            <>
+              <View style={[styles.statCard, { backgroundColor: '#3b82f6' }]}>
+                <Ionicons name="bar-chart" size={24} color="white" />
+                <Text style={styles.statNumber}>{stats.totalAnalyses}</Text>
+                <Text style={styles.statLabel}>Analyses</Text>
+              </View>
+              
+              <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
+                <Ionicons name="analytics" size={24} color="white" />
+                <Text style={styles.statNumber}>{stats.averageScore}</Text>
+                <Text style={styles.statLabel}>Moyenne</Text>
+              </View>
+              
+              <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
+                <Ionicons name="trophy" size={24} color="white" />
+                <Text style={styles.statNumber}>{stats.bestScore}</Text>
+                <Text style={styles.statLabel}>Meilleur</Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Météo */}
-        {profile?.city && (
+        {loading ? (
+          <View style={styles.weatherSection}>
+            <View style={styles.weatherShimmer}>
+              <ShimmerEffect height={16} width="40%" style={{ marginBottom: 8 }} />
+              <ShimmerEffect height={20} width="60%" style={{ marginBottom: 12 }} />
+              <ShimmerEffect height={14} width="80%" />
+            </View>
+          </View>
+        ) : profile?.city ? (
           <View style={styles.weatherSection}>
             <WeatherCard city={profile.city} />
           </View>
-        )}
+        ) : null}
 
         {/* Catégories d'actions */}
         <View style={styles.categoriesSection}>
@@ -442,6 +455,16 @@ const styles = StyleSheet.create({
   weatherSection: {
     paddingHorizontal: 20,
     marginBottom: 24,
+  },
+  weatherShimmer: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
 
   // Catégories

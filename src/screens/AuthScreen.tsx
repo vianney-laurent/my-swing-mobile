@@ -23,6 +23,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -67,6 +69,158 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Email requis', 'Veuillez saisir votre adresse email');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Email invalide', 'Veuillez saisir une adresse email valide');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: 'myswing://reset-password', // Deep link pour l'app mobile
+      });
+
+      if (error) {
+        if (error.message.includes('rate limit')) {
+          Alert.alert('Trop de tentatives', 'Veuillez patienter avant de réessayer.');
+        } else {
+          Alert.alert('Erreur', 'Une erreur s\'est produite. Veuillez réessayer.');
+        }
+      } else {
+        setResetEmailSent(true);
+      }
+    } catch (error) {
+      console.error('Password reset error:', error);
+      Alert.alert('Erreur', 'Une erreur inattendue s\'est produite');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Écran de confirmation d'email envoyé
+  if (resetEmailSent) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <View style={[styles.logoContainer, { backgroundColor: '#10b981' }]}>
+              <Ionicons name="checkmark" size={48} color="white" />
+            </View>
+            <Text style={styles.title}>Email envoyé !</Text>
+            <Text style={styles.subtitle}>
+              Nous avons envoyé un lien de réinitialisation à {email}
+            </Text>
+          </View>
+
+          <View style={styles.form}>
+            <View style={styles.infoBox}>
+              <Ionicons name="mail" size={24} color="#3b82f6" />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>Vérifiez votre email</Text>
+                <Text style={styles.infoText}>
+                  Cliquez sur le lien dans l'email pour créer un nouveau mot de passe.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.helpBox}>
+              <Text style={styles.helpTitle}>Vous ne voyez pas l'email ?</Text>
+              <Text style={styles.helpText}>• Vérifiez votre dossier spam</Text>
+              <Text style={styles.helpText}>• L'email peut prendre quelques minutes</Text>
+              <Text style={styles.helpText}>• Vérifiez que l'adresse est correcte</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.secondaryButton}
+              onPress={() => {
+                setResetEmailSent(false);
+                setShowForgotPassword(false);
+              }}
+            >
+              <Ionicons name="arrow-back" size={20} color="#64748b" />
+              <Text style={styles.secondaryButtonText}>Retour à la connexion</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Écran de mot de passe oublié
+  if (showForgotPassword) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <ScrollView contentContainerStyle={styles.scrollContent}>
+            <View style={styles.header}>
+              <View style={[styles.logoContainer, { backgroundColor: '#3b82f6' }]}>
+                <Ionicons name="mail" size={48} color="white" />
+              </View>
+              <Text style={styles.title}>Mot de passe oublié ?</Text>
+              <Text style={styles.subtitle}>
+                Saisissez votre email pour recevoir un lien de réinitialisation
+              </Text>
+            </View>
+
+            <View style={styles.form}>
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholderTextColor="#94a3b8"
+                />
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.authButton, loading && styles.authButtonDisabled]}
+                onPress={handleForgotPassword}
+                disabled={loading}
+              >
+                <Ionicons name="mail" size={20} color="white" style={{ marginRight: 8 }} />
+                <Text style={styles.authButtonText}>
+                  {loading ? 'Envoi en cours...' : 'Envoyer le lien'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.secondaryButton}
+                onPress={() => setShowForgotPassword(false)}
+              >
+                <Ionicons name="arrow-back" size={20} color="#64748b" />
+                <Text style={styles.secondaryButtonText}>Retour à la connexion</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.securityNote}>
+              <Ionicons name="shield-checkmark" size={20} color="#10b981" />
+              <Text style={styles.securityText}>
+                Le lien expire dans 1 heure et ne peut être utilisé qu'une seule fois.
+              </Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  // Écran principal de connexion/inscription
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
@@ -116,6 +270,16 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 placeholderTextColor="#94a3b8"
               />
             </View>
+            
+            {/* Mot de passe oublié - seulement en mode connexion */}
+            {!isSignUp && (
+              <TouchableOpacity 
+                style={styles.forgotPasswordLink}
+                onPress={() => setShowForgotPassword(true)}
+              >
+                <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
+              </TouchableOpacity>
+            )}
             
             <TouchableOpacity 
               style={[styles.authButton, loading && styles.authButtonDisabled]}
@@ -297,5 +461,86 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginLeft: 16,
     fontWeight: '500',
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    marginBottom: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: '#3b82f6',
+    fontWeight: '500',
+  },
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 8,
+  },
+  secondaryButtonText: {
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    backgroundColor: '#dbeafe',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e40af',
+    marginBottom: 4,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#1e40af',
+    lineHeight: 20,
+  },
+  helpBox: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  helpTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 8,
+  },
+  helpText: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 4,
+  },
+  securityNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 24,
+    gap: 12,
+  },
+  securityText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#166534',
+    lineHeight: 18,
   },
 });

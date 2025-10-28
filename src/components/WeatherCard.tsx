@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MobileWeatherService } from '../lib/weather/mobile-weather-service';
+import { ShimmerEffect } from './ui/ShimmerEffect';
 
 interface WeatherData {
   temperature: number;
@@ -108,20 +109,36 @@ export default function WeatherCard({ city }: WeatherCardProps) {
       <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={[styles.iconContainer, { backgroundColor: '#e5e7eb' }]}>
-              <Ionicons name="location" size={16} color="#6b7280" />
-            </View>
+            <ShimmerEffect height={32} width={32} borderRadius={8} />
             <View>
               <Text style={styles.title}>Météo</Text>
               <Text style={styles.cityName}>{city}</Text>
             </View>
           </View>
-          <ActivityIndicator size="small" color="#6b7280" />
+          <ShimmerEffect height={16} width={16} borderRadius={8} />
         </View>
         
-        <View style={styles.loadingContent}>
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text style={styles.loadingText}>Chargement...</Text>
+        <View style={styles.shimmerMainWeather}>
+          <View style={styles.shimmerTemperatureSection}>
+            <ShimmerEffect height={28} width="60%" style={{ marginBottom: 8 }} />
+            <ShimmerEffect height={14} width="80%" />
+          </View>
+          <ShimmerEffect height={32} width={32} borderRadius={16} />
+        </View>
+
+        <View style={styles.shimmerDetailsContainer}>
+          <View style={styles.shimmerDetailItem}>
+            <ShimmerEffect height={14} width="50%" style={{ marginBottom: 6 }} />
+            <ShimmerEffect height={16} width="70%" />
+          </View>
+          <View style={styles.shimmerDetailItem}>
+            <ShimmerEffect height={14} width="50%" style={{ marginBottom: 6 }} />
+            <ShimmerEffect height={16} width="70%" />
+          </View>
+        </View>
+
+        <View style={styles.shimmerAdviceContainer}>
+          <ShimmerEffect height={13} width="90%" />
         </View>
       </View>
     );
@@ -348,5 +365,35 @@ const styles = StyleSheet.create({
     color: '#166534',
     fontWeight: '500',
     textAlign: 'center',
+  },
+  // Shimmer styles
+  shimmerMainWeather: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  shimmerTemperatureSection: {
+    flex: 1,
+  },
+  shimmerDetailsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  shimmerDetailItem: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 12,
+  },
+  shimmerAdviceContainer: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
   },
 });

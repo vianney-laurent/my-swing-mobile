@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileAnalysisService } from '../lib/analysis/analysis-service';
-import VideoPlayer from '../components/VideoPlayer';
+import EnhancedVideoPlayer from '../components/EnhancedVideoPlayer';
 
 interface AnalysisResultScreenProps {
   route: {
@@ -237,10 +237,10 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
           </View>
         </View>
 
-        {/* Section Lecteur Vidéo */}
+        {/* Section Lecteur Vidéo Amélioré */}
         {analysisData.videoUrl && (
           <View style={styles.videoSection}>
-            <VideoPlayer
+            <EnhancedVideoPlayer
               videoUrl={analysisData.videoUrl}
               title="Votre Swing Analysé"
               showAnalysisControls={true}
@@ -274,53 +274,131 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
           </View>
         )}
 
-        {/* Section Problèmes Critiques */}
+        {/* Section Points d'Amélioration - Design Amélioré */}
         {analysisData.criticalIssues.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="warning" size={20} color="#ef4444" />
-              <Text style={styles.sectionTitle}>Points d'Amélioration</Text>
+            <View style={styles.enhancedSectionHeader}>
+              <View style={styles.sectionIconContainer}>
+                <Ionicons name="trending-up" size={24} color="white" />
+              </View>
+              <View style={styles.sectionHeaderContent}>
+                <Text style={styles.enhancedSectionTitle}>Points d'Amélioration</Text>
+                <Text style={styles.sectionSubtitle}>Concentrez-vous sur ces aspects clés</Text>
+              </View>
+              <View style={styles.issueCountBadge}>
+                <Text style={styles.issueCountText}>{analysisData.criticalIssues.length}</Text>
+              </View>
             </View>
+            
             {analysisData.criticalIssues.map((issue: any, index: number) => (
-              <View key={index} style={styles.issueItem}>
-                <View style={styles.issueHeader}>
-                  <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(issue.priority) }]}>
-                    <Text style={styles.priorityText}>#{issue.priority}</Text>
+              <View key={index} style={styles.enhancedIssueCard}>
+                {/* Header avec priorité et titre */}
+                <View style={styles.issueCardHeader}>
+                  <View style={styles.priorityContainer}>
+                    <View style={[styles.priorityIndicator, { backgroundColor: getPriorityColor(issue.priority) }]} />
+                    <Text style={styles.priorityLabel}>
+                      Priorité {issue.priority === 1 ? 'Haute' : issue.priority === 2 ? 'Moyenne' : 'Basse'}
+                    </Text>
                   </View>
-                  <Text style={styles.issueTitle}>{issue.issue}</Text>
+                  <View style={styles.issueNumber}>
+                    <Text style={styles.issueNumberText}>{index + 1}</Text>
+                  </View>
                 </View>
-                <Text style={styles.issueEvidence}>⏱️ {issue.timeEvidence}</Text>
-                <View style={styles.actionContainer}>
-                  <Text style={styles.actionLabel}>Action immédiate:</Text>
-                  <Text style={styles.actionText}>{issue.immediateAction}</Text>
+                
+                {/* Titre du problème */}
+                <Text style={styles.enhancedIssueTitle}>{issue.issue}</Text>
+                
+                {/* Moment détecté */}
+                <View style={styles.evidenceContainer}>
+                  <Ionicons name="time-outline" size={16} color="#64748b" />
+                  <Text style={styles.evidenceText}>{issue.timeEvidence}</Text>
                 </View>
-                <Text style={styles.improvementText}>💡 {issue.expectedImprovement}</Text>
+                
+                {/* Action immédiate - Design carte */}
+                <View style={styles.actionCard}>
+                  <View style={styles.actionCardHeader}>
+                    <Ionicons name="flash" size={16} color="#f59e0b" />
+                    <Text style={styles.actionCardTitle}>Action Immédiate</Text>
+                  </View>
+                  <Text style={styles.actionCardText}>{issue.immediateAction}</Text>
+                </View>
+                
+                {/* Résultat attendu */}
+                <View style={styles.improvementContainer}>
+                  <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                  <Text style={styles.improvementLabel}>Résultat attendu:</Text>
+                  <Text style={styles.improvementValue}>{issue.expectedImprovement}</Text>
+                </View>
               </View>
             ))}
           </View>
         )}
 
-        {/* Section Conseils Actionnables */}
+        {/* Section Exercices Recommandés - Design Amélioré */}
         {analysisData.actionableAdvice.length > 0 && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="bulb" size={20} color="#f59e0b" />
-              <Text style={styles.sectionTitle}>Exercices Recommandés</Text>
+            <View style={styles.enhancedSectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#f59e0b' }]}>
+                <Ionicons name="fitness" size={24} color="white" />
+              </View>
+              <View style={styles.sectionHeaderContent}>
+                <Text style={styles.enhancedSectionTitle}>Exercices Recommandés</Text>
+                <Text style={styles.sectionSubtitle}>Programme personnalisé pour progresser</Text>
+              </View>
+              <View style={[styles.issueCountBadge, { backgroundColor: '#f59e0b' }]}>
+                <Text style={styles.issueCountText}>{analysisData.actionableAdvice.length}</Text>
+              </View>
             </View>
+            
             {analysisData.actionableAdvice.map((advice: any, index: number) => (
-              <View key={index} style={styles.adviceItem}>
-                <View style={styles.adviceHeader}>
-                  <Text style={styles.adviceCategory}>{advice.category}</Text>
-                  <View style={[styles.difficultyBadge, { 
-                    backgroundColor: advice.difficulty === 'easy' ? '#10b981' : 
-                                   advice.difficulty === 'medium' ? '#f59e0b' : '#ef4444'
-                  }]}>
-                    <Text style={styles.difficultyText}>{advice.difficulty}</Text>
+              <View key={index} style={styles.enhancedAdviceCard}>
+                {/* Header avec catégorie et difficulté */}
+                <View style={styles.adviceCardHeader}>
+                  <View style={styles.categoryContainer}>
+                    <Ionicons name="barbell" size={16} color="#f59e0b" />
+                    <Text style={styles.categoryText}>{advice.category}</Text>
+                  </View>
+                  <View style={styles.difficultyContainer}>
+                    <View style={[styles.difficultyDot, { 
+                      backgroundColor: advice.difficulty === 'easy' ? '#10b981' : 
+                                     advice.difficulty === 'medium' ? '#f59e0b' : '#ef4444'
+                    }]} />
+                    <Text style={styles.difficultyLabel}>
+                      {advice.difficulty === 'easy' ? 'Facile' : 
+                       advice.difficulty === 'medium' ? 'Moyen' : 'Difficile'}
+                    </Text>
                   </View>
                 </View>
-                <Text style={styles.adviceInstruction}>{advice.instruction}</Text>
-                <Text style={styles.adviceTest}>🎯 Test: {advice.howToTest}</Text>
-                <Text style={styles.adviceTime}>⏰ Résultats attendus: {advice.timeToSee}</Text>
+                
+                {/* Numéro d'exercice */}
+                <View style={styles.exerciseNumber}>
+                  <Text style={styles.exerciseNumberText}>Exercice {index + 1}</Text>
+                </View>
+                
+                {/* Instructions */}
+                <View style={styles.instructionContainer}>
+                  <Ionicons name="list" size={16} color="#64748b" />
+                  <Text style={styles.instructionLabel}>Instructions:</Text>
+                </View>
+                <Text style={styles.enhancedInstructionText}>{advice.instruction}</Text>
+                
+                {/* Comment tester */}
+                <View style={styles.testContainer}>
+                  <View style={styles.testHeader}>
+                    <Ionicons name="checkmark-done" size={16} color="#3b82f6" />
+                    <Text style={styles.testLabel}>Comment tester:</Text>
+                  </View>
+                  <Text style={styles.testText}>{advice.howToTest}</Text>
+                </View>
+                
+                {/* Délai de résultats */}
+                <View style={styles.timelineContainer}>
+                  <Ionicons name="time" size={16} color="#8b5cf6" />
+                  <Text style={styles.timelineLabel}>Résultats attendus:</Text>
+                  <Text style={styles.timelineValue}>{advice.timeToSee}</Text>
+                </View>
+                
+
               </View>
             ))}
           </View>
@@ -534,9 +612,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Section vidéo
+  // Section vidéo - Suppression des marges pour maximiser l'espace
   videoSection: {
-    marginHorizontal: 16,
     marginBottom: 16,
   },
 
@@ -563,6 +640,49 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1e293b',
     marginLeft: 8,
+  },
+
+  // Nouveaux styles pour les sections améliorées
+  enhancedSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: '#f1f5f9',
+  },
+  sectionIconContainer: {
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    padding: 8,
+    marginRight: 12,
+  },
+  sectionHeaderContent: {
+    flex: 1,
+  },
+  enhancedSectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  issueCountBadge: {
+    backgroundColor: '#ef4444',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minWidth: 32,
+    alignItems: 'center',
+  },
+  issueCountText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '700',
   },
 
   // Points forts
@@ -605,7 +725,121 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Problèmes critiques
+  // Points d'amélioration - Design amélioré
+  enhancedIssueCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  issueCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  priorityIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  priorityLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+    textTransform: 'uppercase',
+  },
+  issueNumber: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  issueNumberText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+  },
+  enhancedIssueTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+    lineHeight: 24,
+  },
+  evidenceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  evidenceText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginLeft: 8,
+    fontStyle: 'italic',
+  },
+  actionCard: {
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  actionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  actionCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#92400e',
+    marginLeft: 6,
+  },
+  actionCardText: {
+    fontSize: 15,
+    color: '#78350f',
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  improvementContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#f0fdf4',
+    padding: 12,
+    borderRadius: 8,
+  },
+  improvementLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#166534',
+    marginLeft: 6,
+    marginRight: 8,
+  },
+  improvementValue: {
+    fontSize: 13,
+    color: '#166534',
+    flex: 1,
+    lineHeight: 18,
+  },
+
+  // Problèmes critiques - Ancien style (gardé pour compatibilité)
   issueItem: {
     backgroundColor: '#fef2f2',
     padding: 16,
@@ -667,7 +901,131 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Conseils actionnables
+  // Exercices recommandés - Design amélioré
+  enhancedAdviceCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    shadowColor: '#f59e0b',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  adviceCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f59e0b',
+    marginLeft: 6,
+  },
+  difficultyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  difficultyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  difficultyLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  exerciseNumber: {
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  exerciseNumberText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#92400e',
+    textTransform: 'uppercase',
+  },
+  instructionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  instructionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+    marginLeft: 6,
+  },
+  enhancedInstructionText: {
+    fontSize: 15,
+    color: '#1e293b',
+    lineHeight: 22,
+    marginBottom: 16,
+    fontWeight: '500',
+  },
+  testContainer: {
+    backgroundColor: '#eff6ff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  testHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  testLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e40af',
+    marginLeft: 6,
+  },
+  testText: {
+    fontSize: 14,
+    color: '#1e40af',
+    lineHeight: 20,
+  },
+  timelineContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#faf5ff',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  timelineLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7c3aed',
+    marginLeft: 6,
+    marginRight: 8,
+    flexShrink: 0,
+  },
+  timelineValue: {
+    fontSize: 13,
+    color: '#7c3aed',
+    fontWeight: '500',
+    flex: 1,
+    lineHeight: 18,
+  },
+
+
+  // Conseils actionnables - Ancien style (gardé pour compatibilité)
   adviceItem: {
     backgroundColor: '#fffbeb',
     padding: 16,

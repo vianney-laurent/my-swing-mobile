@@ -19,6 +19,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
 import LegalModal from '../components/legal/LegalModal';
+import { ShimmerStatCard, ShimmerProfileField } from '../components/ui/ShimmerEffect';
 
 interface UserStats {
   totalAnalyses: number;
@@ -162,23 +163,33 @@ export default function ProfileScreen() {
       >
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: '#3b82f6' }]}>
-            <Ionicons name="bar-chart" size={20} color="white" />
-            <Text style={styles.statNumber}>{stats.totalAnalyses}</Text>
-            <Text style={styles.statLabel}>Analyses</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
-            <Ionicons name="analytics" size={20} color="white" />
-            <Text style={styles.statNumber}>{stats.averageScore}</Text>
-            <Text style={styles.statLabel}>Moyenne</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
-            <Ionicons name="trophy" size={20} color="white" />
-            <Text style={styles.statNumber}>{stats.bestScore}</Text>
-            <Text style={styles.statLabel}>Meilleur</Text>
-          </View>
+          {loading ? (
+            <>
+              <ShimmerStatCard />
+              <ShimmerStatCard />
+              <ShimmerStatCard />
+            </>
+          ) : (
+            <>
+              <View style={[styles.statCard, { backgroundColor: '#3b82f6' }]}>
+                <Ionicons name="bar-chart" size={20} color="white" />
+                <Text style={styles.statNumber}>{stats.totalAnalyses}</Text>
+                <Text style={styles.statLabel}>Analyses</Text>
+              </View>
+              
+              <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
+                <Ionicons name="analytics" size={20} color="white" />
+                <Text style={styles.statNumber}>{stats.averageScore}</Text>
+                <Text style={styles.statLabel}>Moyenne</Text>
+              </View>
+              
+              <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
+                <Ionicons name="trophy" size={20} color="white" />
+                <Text style={styles.statNumber}>{stats.bestScore}</Text>
+                <Text style={styles.statLabel}>Meilleur</Text>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Profile Info */}
@@ -195,71 +206,84 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.profileFields}>
-            <View style={styles.profileField}>
-              <Ionicons name="person" size={20} color="#64748b" />
-              <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Nom complet</Text>
-                <Text style={styles.fieldValue}>
-                  {profile?.first_name && profile?.last_name 
-                    ? `${profile.first_name} ${profile.last_name}`
-                    : 'Non renseigné'
-                  }
-                </Text>
-              </View>
-            </View>
+            {loading ? (
+              <>
+                <ShimmerProfileField />
+                <ShimmerProfileField />
+                <ShimmerProfileField />
+                <ShimmerProfileField />
+                <ShimmerProfileField />
+                <ShimmerProfileField />
+              </>
+            ) : (
+              <>
+                <View style={styles.profileField}>
+                  <Ionicons name="person" size={20} color="#64748b" />
+                  <View style={styles.fieldContent}>
+                    <Text style={styles.fieldLabel}>Nom complet</Text>
+                    <Text style={styles.fieldValue}>
+                      {profile?.first_name && profile?.last_name 
+                        ? `${profile.first_name} ${profile.last_name}`
+                        : 'Non renseigné'
+                      }
+                    </Text>
+                  </View>
+                </View>
 
-            <View style={styles.profileField}>
-              <Ionicons name="mail" size={20} color="#64748b" />
-              <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Email</Text>
-                <Text style={styles.fieldValue}>{user?.email}</Text>
-              </View>
-            </View>
+                <View style={styles.profileField}>
+                  <Ionicons name="mail" size={20} color="#64748b" />
+                  <View style={styles.fieldContent}>
+                    <Text style={styles.fieldLabel}>Email</Text>
+                    <Text style={styles.fieldValue}>{user?.email}</Text>
+                  </View>
+                </View>
 
-            <View style={styles.profileField}>
-              <Ionicons name="location" size={20} color="#64748b" />
-              <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Ville</Text>
-                <Text style={styles.fieldValue}>
-                  {profile?.city || 'Non renseignée'}
-                </Text>
-              </View>
-            </View>
+                <View style={styles.profileField}>
+                  <Ionicons name="location" size={20} color="#64748b" />
+                  <View style={styles.fieldContent}>
+                    <Text style={styles.fieldLabel}>Ville</Text>
+                    <Text style={styles.fieldValue}>
+                      {profile?.city || 'Non renseignée'}
+                    </Text>
+                  </View>
+                </View>
 
-            <View style={styles.profileField}>
-              <Ionicons name="trophy" size={20} color="#64748b" />
-              <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Index de golf</Text>
-                <Text style={styles.fieldValue}>
-                  {profile?.golf_index ? profile.golf_index.toString() : 'Non renseigné'}
-                </Text>
-              </View>
-            </View>
+                <View style={styles.profileField}>
+                  <Ionicons name="trophy" size={20} color="#64748b" />
+                  <View style={styles.fieldContent}>
+                    <Text style={styles.fieldLabel}>Index de golf</Text>
+                    <Text style={styles.fieldValue}>
+                      {profile?.golf_index ? profile.golf_index.toString() : 'Non renseigné'}
+                    </Text>
+                  </View>
+                </View>
 
-            <View style={styles.profileField}>
-              <Ionicons name="hand-left" size={20} color="#64748b" />
-              <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Main dominante</Text>
-                <Text style={styles.fieldValue}>
-                  {profile?.dominant_hand === 'right' ? 'Droitier' : 
-                   profile?.dominant_hand === 'left' ? 'Gaucher' : 
-                   'Non renseigné'}
-                </Text>
-              </View>
-            </View>
+                <View style={styles.profileField}>
+                  <Ionicons name="hand-left" size={20} color="#64748b" />
+                  <View style={styles.fieldContent}>
+                    <Text style={styles.fieldLabel}>Main dominante</Text>
+                    <Text style={styles.fieldValue}>
+                      {profile?.dominant_hand === 'right' ? 'Droitier' : 
+                       profile?.dominant_hand === 'left' ? 'Gaucher' : 
+                       'Non renseigné'}
+                    </Text>
+                  </View>
+                </View>
 
-            <View style={styles.profileField}>
-              <Ionicons name="calendar" size={20} color="#64748b" />
-              <View style={styles.fieldContent}>
-                <Text style={styles.fieldLabel}>Membre depuis</Text>
-                <Text style={styles.fieldValue}>
-                  {user?.created_at ? formatDistanceToNow(new Date(user.created_at), { 
-                    addSuffix: true, 
-                    locale: fr 
-                  }) : 'Récemment'}
-                </Text>
-              </View>
-            </View>
+                <View style={styles.profileField}>
+                  <Ionicons name="calendar" size={20} color="#64748b" />
+                  <View style={styles.fieldContent}>
+                    <Text style={styles.fieldLabel}>Membre depuis</Text>
+                    <Text style={styles.fieldValue}>
+                      {user?.created_at ? formatDistanceToNow(new Date(user.created_at), { 
+                        addSuffix: true, 
+                        locale: fr 
+                      }) : 'Récemment'}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
