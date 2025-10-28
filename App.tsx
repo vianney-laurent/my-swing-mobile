@@ -1,20 +1,22 @@
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import AppNavigator from './src/navigation/AppNavigator';
+import { config, validateConfig } from './src/lib/config';
 
 export default function App() {
+  // Validate configuration on startup
+  React.useEffect(() => {
+    const isValid = validateConfig();
+    if (!isValid) {
+      console.warn('Some environment variables are missing. Check your .env file.');
+    }
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppNavigator />
       <StatusBar style="auto" />
-    </View>
+    </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
