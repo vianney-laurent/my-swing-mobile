@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase/client';
 import { AuthService } from '../lib/auth/auth-service';
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const session = await AuthService.getCurrentSession();
+        const { data: { session } } = await supabase.getSession();
         setUser(session?.user ?? null);
+        console.log('Initial session loaded:', session?.user?.email || 'No user');
       } catch (error) {
         console.error('Error getting initial session:', error);
       } finally {
@@ -21,17 +21,6 @@ export function useAuth() {
     };
 
     getInitialSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
   }, []);
 
   return {

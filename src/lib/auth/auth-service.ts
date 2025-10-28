@@ -1,6 +1,5 @@
 // Authentication service for React Native
 import { supabase } from '../supabase/client';
-import type { User, AuthError } from '@supabase/supabase-js';
 
 export interface SignUpData {
   email: string;
@@ -14,27 +13,24 @@ export interface SignInData {
 }
 
 export interface AuthResult {
-  user: User | null;
-  error: AuthError | null;
+  user: any | null;
+  error: any | null;
 }
 
 export class AuthService {
   // Sign up new user
   static async signUp({ email, password, golfLevel = 'beginner' }: SignUpData): Promise<AuthResult> {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.signUp(email, password);
 
       if (error) {
         return { user: null, error };
       }
 
       // Create profile if user was created successfully
-      if (data.user) {
+      if (data?.user) {
         try {
-          await supabase.from('profiles').insert({
+          await supabase.insertProfile({
             id: data.user.id,
             email: data.user.email || email,
             golf_level: golfLevel,
@@ -44,16 +40,14 @@ export class AuthService {
         }
       }
 
-      return { user: data.user, error: null };
+      return { user: data?.user || null, error: null };
     } catch (error) {
       console.error('Sign up error:', error);
       return { 
         user: null, 
         error: { 
-          message: 'Une erreur inattendue s\'est produite',
-          name: 'UnexpectedError',
-          status: 500
-        } as AuthError 
+          message: 'Une erreur inattendue s\'est produite'
+        }
       };
     }
   }
@@ -61,46 +55,38 @@ export class AuthService {
   // Sign in existing user
   static async signIn({ email, password }: SignInData): Promise<AuthResult> {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      return { user: data.user, error };
+      const { data, error } = await supabase.signIn(email, password);
+      return { user: data?.user || null, error };
     } catch (error) {
       console.error('Sign in error:', error);
       return { 
         user: null, 
         error: { 
-          message: 'Une erreur inattendue s\'est produite',
-          name: 'UnexpectedError',
-          status: 500
-        } as AuthError 
+          message: 'Une erreur inattendue s\'est produite'
+        }
       };
     }
   }
 
   // Sign out user
-  static async signOut(): Promise<{ error: AuthError | null }> {
+  static async signOut(): Promise<{ error: any | null }> {
     try {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.signOut();
       return { error };
     } catch (error) {
       console.error('Sign out error:', error);
       return { 
         error: { 
-          message: 'Erreur lors de la déconnexion',
-          name: 'SignOutError',
-          status: 500
-        } as AuthError 
+          message: 'Erreur lors de la déconnexion'
+        }
       };
     }
   }
 
   // Get current user
-  static async getCurrentUser(): Promise<User | null> {
+  static async getCurrentUser(): Promise<any | null> {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabase.getUser();
       if (error) {
         console.error('Error getting current user:', error);
         return null;
@@ -115,28 +101,11 @@ export class AuthService {
   // Get current session
   static async getCurrentSession() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.getSession();
       return session;
     } catch (error) {
       console.error('Get current session error:', error);
       return null;
-    }
-  }
-
-  // Reset password
-  static async resetPassword(email: string): Promise<{ error: AuthError | null }> {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
-      return { error };
-    } catch (error) {
-      console.error('Reset password error:', error);
-      return { 
-        error: { 
-          message: 'Erreur lors de la réinitialisation du mot de passe',
-          name: 'ResetPasswordError',
-          status: 500
-        } as AuthError 
-      };
     }
   }
 
@@ -155,7 +124,7 @@ export class AuthService {
   }
 
   // Format auth error messages in French
-  static formatAuthError(error: AuthError): string {
+  static formatAuthError(error: any): string {
     switch (error.message) {
       case 'Invalid login credentials':
         return 'Email ou mot de passe incorrect';
