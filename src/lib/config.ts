@@ -3,27 +3,27 @@ import Constants from 'expo-constants';
 
 export const config = {
   supabase: {
-    url: Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    anonKey: Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+    url: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
+    anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
   },
   gemini: {
-    apiKey: Constants.expoConfig?.extra?.EXPO_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY || '',
+    apiKey: process.env.EXPO_PUBLIC_GOOGLE_GENERATIVE_AI_API_KEY || '',
   },
   weather: {
-    apiKey: Constants.expoConfig?.extra?.EXPO_PUBLIC_OPENWEATHER_API_KEY || process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '',
+    apiKey: process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY || '',
   },
   frameExtraction: {
-    serverUrl: Constants.expoConfig?.extra?.EXPO_PUBLIC_FRAME_EXTRACTION_SERVER_URL || process.env.EXPO_PUBLIC_FRAME_EXTRACTION_SERVER_URL || '',
+    serverUrl: process.env.EXPO_PUBLIC_FRAME_EXTRACTION_SERVER_URL || '',
   },
   app: {
     name: 'My Swing',
     shortName: 'My Swing',
     description: 'Un prof de golf dans votre poche !',
-    version: Constants.expoConfig?.extra?.EXPO_PUBLIC_APP_VERSION || process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0-mobile',
+    version: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0-mobile',
   },
   video: {
-    maxSizeMB: parseInt(Constants.expoConfig?.extra?.EXPO_PUBLIC_MAX_VIDEO_SIZE_MB || process.env.EXPO_PUBLIC_MAX_VIDEO_SIZE_MB || '10'),
-    maxDurationSeconds: parseInt(Constants.expoConfig?.extra?.EXPO_PUBLIC_MAX_VIDEO_DURATION_SECONDS || process.env.EXPO_PUBLIC_MAX_VIDEO_DURATION_SECONDS || '30'),
+    maxSizeMB: parseInt(process.env.EXPO_PUBLIC_MAX_VIDEO_SIZE_MB || '10'),
+    maxDurationSeconds: parseInt(process.env.EXPO_PUBLIC_MAX_VIDEO_DURATION_SECONDS || '30'),
     supportedFormats: ['video/mp4', 'video/mov', 'video/quicktime'],
   },
   analysis: {
