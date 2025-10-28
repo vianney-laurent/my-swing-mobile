@@ -10,7 +10,7 @@ export function useAuth() {
     // Get initial session
     const getInitialSession = async () => {
       try {
-        const { data: { session } } = await supabase.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user ?? null);
         console.log('Initial session loaded:', session?.user?.email || 'No user');
       } catch (error) {

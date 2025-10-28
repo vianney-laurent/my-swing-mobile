@@ -21,7 +21,7 @@ export class AuthService {
   // Sign up new user
   static async signUp({ email, password, golfLevel = 'beginner' }: SignUpData): Promise<AuthResult> {
     try {
-      const { data, error } = await supabase.signUp(email, password);
+      const { data, error } = await supabase.auth.signUp({ email, password });
 
       if (error) {
         return { user: null, error };
@@ -30,7 +30,7 @@ export class AuthService {
       // Create profile if user was created successfully
       if (data?.user) {
         try {
-          await supabase.insertProfile({
+          await supabase.from('profiles').insert({
             id: data.user.id,
             email: data.user.email || email,
             golf_level: golfLevel,
@@ -55,7 +55,7 @@ export class AuthService {
   // Sign in existing user
   static async signIn({ email, password }: SignInData): Promise<AuthResult> {
     try {
-      const { data, error } = await supabase.signIn(email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       return { user: data?.user || null, error };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -71,7 +71,7 @@ export class AuthService {
   // Sign out user
   static async signOut(): Promise<{ error: any | null }> {
     try {
-      const { error } = await supabase.signOut();
+      const { error } = await supabase.auth.signOut();
       return { error };
     } catch (error) {
       console.error('Sign out error:', error);
@@ -86,7 +86,7 @@ export class AuthService {
   // Get current user
   static async getCurrentUser(): Promise<any | null> {
     try {
-      const { data: { user }, error } = await supabase.getUser();
+      const { data: { user }, error } = await supabase.auth.getUser();
       if (error) {
         console.error('Error getting current user:', error);
         return null;
@@ -101,7 +101,7 @@ export class AuthService {
   // Get current session
   static async getCurrentSession() {
     try {
-      const { data: { session } } = await supabase.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       return session;
     } catch (error) {
       console.error('Get current session error:', error);
