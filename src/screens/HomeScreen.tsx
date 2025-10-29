@@ -17,6 +17,7 @@ import { MobileWeatherService } from '../lib/weather/mobile-weather-service';
 import WeatherCard from '../components/WeatherCard';
 import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
 import { ShimmerEffect, ShimmerStatCard } from '../components/ui/ShimmerEffect';
+import DailyTipCard from '../components/tips/DailyTipCard';
 
 interface HomeScreenProps {
   navigation: any;
@@ -250,37 +251,13 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         </View>
 
-        {/* Conseils du jour */}
-        <View style={styles.tipsSection}>
-          <Text style={styles.tipsTitle}>Conseils du Jour</Text>
-          
-          <View style={styles.tipCard}>
-            <View style={styles.tipIcon}>
-              <Ionicons name="phone-portrait" size={20} color="#3b82f6" />
-            </View>
-            <Text style={styles.tipText}>
-              Tenez votre téléphone à la verticale pour une meilleure analyse
-            </Text>
-          </View>
-          
-          <View style={styles.tipCard}>
-            <View style={styles.tipIcon}>
-              <Ionicons name="eye" size={20} color="#10b981" />
-            </View>
-            <Text style={styles.tipText}>
-              Filmez votre swing de profil pour des résultats optimaux
-            </Text>
-          </View>
-          
-          <View style={styles.tipCard}>
-            <View style={styles.tipIcon}>
-              <Ionicons name="sunny" size={20} color="#f59e0b" />
-            </View>
-            <Text style={styles.tipText}>
-              Assurez-vous d'avoir un bon éclairage pour l'analyse vidéo
-            </Text>
-          </View>
-        </View>
+        {/* Conseil du jour dynamique */}
+        <DailyTipCard 
+          onTipPress={(tip) => {
+            console.log('💡 Tip pressed:', tip.title);
+            // Optionnel: naviguer vers une page de détail du conseil
+          }}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -381,11 +358,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 3,
   },
   progressHeader: {
@@ -462,9 +439,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
 
   // Catégories
@@ -491,9 +468,9 @@ const styles = StyleSheet.create({
     width: '47%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   categoryIcon: {
     borderRadius: 12,
@@ -521,40 +498,5 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
   },
 
-  // Conseils
-  tipsSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
-  },
-  tipsTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 16,
-  },
-  tipCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  tipIcon: {
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-    padding: 8,
-    marginRight: 12,
-  },
-  tipText: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
-    flex: 1,
-  },
+
 });

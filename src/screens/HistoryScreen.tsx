@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   RefreshControl,
   Alert,
 } from 'react-native';
@@ -12,9 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileAnalysisService } from '../lib/analysis/analysis-service';
 import { Analysis } from '../types/profile';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+// formatDistanceToNow et fr sont maintenant utilisés dans EnhancedAnalysisCard
 import { ShimmerStatCard, ShimmerAnalysisCard } from '../components/ui/ShimmerEffect';
+import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
+import EnhancedAnalysisCard from '../components/history/EnhancedAnalysisCard';
 
 interface UserStats {
   totalAnalyses: number;
@@ -35,6 +35,7 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { containerPaddingBottom } = useSafeBottomPadding();
 
   useEffect(() => {
     loadAnalyses();
@@ -73,11 +74,7 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
     setRefreshing(false);
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return '#10b981';
-    if (score >= 60) return '#f59e0b';
-    return '#ef4444';
-  };  
+  // getScoreColor est maintenant dans EnhancedAnalysisCard  
   const handleAnalysisPress = (analysis: Analysis) => {
     if (analysis.status === 'completed') {
       console.log('🔄 [HistoryScreen] Navigating to analysis:', analysis.id);
@@ -91,45 +88,12 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
     }
   };
 
-  const renderAnalysisItem = ({ item }: { item: Analysis }) => (
-    <TouchableOpacity 
-      style={styles.analysisCard}
-      onPress={() => handleAnalysisPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.analysisHeader}>
-        <View style={styles.analysisInfo}>
-          <Text style={styles.analysisType}>
-            {item.analysis_type === 'correction' ? 'Correction' : 'Analyse'}
-          </Text>
-          <Text style={styles.analysisDate}>
-            {formatDistanceToNow(new Date(item.created_at), { 
-              addSuffix: true, 
-              locale: fr 
-            })}
-          </Text>
-        </View>
-        <View style={styles.scoreContainer}>
-          <Text style={[styles.score, { color: getScoreColor(item.overall_score || 0) }]}>
-            {item.overall_score || 0}
-          </Text>
-          <Text style={styles.scoreLabel}>/100</Text>
-        </View>
-      </View>
-      
-      <View style={styles.analysisFooter}>
-        <View style={styles.statusContainer}>
-          <View style={[
-            styles.statusDot, 
-            { backgroundColor: item.status === 'completed' ? '#10b981' : '#f59e0b' }
-          ]} />
-          <Text style={styles.statusText}>
-            {item.status === 'completed' ? 'Terminée' : 'En cours'}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
-      </View>
-    </TouchableOpacity>
+  const renderAnalysisItem = ({ item, index }: { item: Analysis; index: number }) => (
+    <EnhancedAnalysisCard 
+      analysis={item}
+      onPress={handleAnalysisPress}
+      index={index}
+    />
   );
 
   const renderStatsCards = () => (
@@ -196,7 +160,7 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          contentContainerStyle={styles.listContainer}
+          contentContainerStyle={[styles.listContainer, { paddingBottom: containerPaddingBottom }]}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -227,7 +191,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flexGrow: 1,
-    paddingBottom: 20,
+    // paddingBottom sera géré dynamiquement par useSafeBottomPadding
   },
   statsContainer: {
     flexDirection: 'row',
@@ -256,67 +220,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
   },
-  analysisCard: {
-    backgroundColor: 'white',
-    marginHorizontal: 20,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  analysisHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  analysisInfo: {
-    flex: 1,
-  },
-  analysisType: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  analysisDate: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  scoreContainer: {
-    alignItems: 'center',
-  },
-  score: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  scoreLabel: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  analysisFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 14,
-    color: '#64748b',
-  },
+  // Styles de l'ancienne card supprimés - maintenant dans EnhancedAnalysisCard
   emptyState: {
     flex: 1,
     justifyContent: 'center',
