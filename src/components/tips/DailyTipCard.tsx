@@ -72,9 +72,7 @@ export default function DailyTipCard({ onTipPress }: DailyTipCardProps) {
     }
   };
 
-  const handleRefresh = async () => {
-    await loadTodaysTip();
-  };
+
 
   const getCategoryLabel = (category: string): string => {
     const labels = {
@@ -131,7 +129,7 @@ export default function DailyTipCard({ onTipPress }: DailyTipCardProps) {
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={24} color="#ef4444" />
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+          <TouchableOpacity style={styles.retryButton} onPress={loadTodaysTip}>
             <Ionicons name="refresh" size={16} color="#3b82f6" />
             <Text style={styles.retryText}>Réessayer</Text>
           </TouchableOpacity>
@@ -154,9 +152,6 @@ export default function DailyTipCard({ onTipPress }: DailyTipCardProps) {
             <Text style={styles.categoryText}>{getCategoryLabel(tip.category)}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={16} color="#64748b" />
-        </TouchableOpacity>
       </View>
 
       {/* Contenu principal */}
@@ -198,12 +193,7 @@ export default function DailyTipCard({ onTipPress }: DailyTipCardProps) {
         </View>
       </TouchableOpacity>
 
-      {/* Indicateur de nouveau conseil */}
-      {new Date(tip.date).toDateString() === new Date().toDateString() && (
-        <View style={styles.newBadge}>
-          <Text style={styles.newBadgeText}>Nouveau</Text>
-        </View>
-      )}
+
     </Animated.View>
   );
 }
@@ -253,11 +243,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#64748b',
   },
-  refreshButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#f8fafc',
-  },
+
   content: {
     flexDirection: 'row',
     padding: 20,
@@ -318,20 +304,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#8b5cf6',
   },
-  newBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: '#10b981',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  newBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: 'white',
-  },
+
   errorContainer: {
     padding: 20,
     alignItems: 'center',
