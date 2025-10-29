@@ -7,11 +7,22 @@ import ProfileScreen from '../screens/ProfileScreen';
 import AnalysisResultScreen from '../screens/AnalysisResultScreen';
 import HomeScreen from '../screens/HomeScreen';
 import AuthScreen from '../screens/AuthScreen';
+import HelpScreen from '../screens/HelpScreen';
 import SimpleTabBar from '../components/navigation/SimpleTabBar';
+import HelpButton from '../components/help/HelpButton';
 import { useNavigation, Screen } from '../hooks/useNavigation';
 
 export default function AppNavigator() {
-  const { currentScreen, analysisId, navigate, goBack } = useNavigation();
+  const { 
+    currentScreen, 
+    analysisId, 
+    helpScreen, 
+    navigate, 
+    navigateToHelp, 
+    navigateToHelpSection, 
+    goBack, 
+    goBackFromHelp 
+  } = useNavigation();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -108,7 +119,15 @@ export default function AppNavigator() {
           }} 
         /> : null;
       case 'profile':
-        return <ProfileScreen />;
+        return <ProfileScreen 
+          onNavigateToHelp={() => navigateToHelp('helpIndex')}
+        />;
+      case 'help':
+        return <HelpScreen 
+          helpScreen={helpScreen || 'helpIndex'}
+          onBack={goBackFromHelp}
+          onNavigateToSection={navigateToHelpSection}
+        />;
       default:
         return <HomeScreen navigation={{ 
           navigate: (screen: string, params?: any) => {
@@ -123,8 +142,9 @@ export default function AppNavigator() {
     }
   };
 
-  // Ne montrer les onglets que si l'utilisateur est connecté
+  // Ne montrer les onglets et le bouton d'aide que si l'utilisateur est connecté
   const showNavbar = currentScreen !== 'auth';
+  const showHelpButton = currentScreen !== 'auth' && currentScreen !== 'help';
   console.log('🔍 [AppNavigator] Showing navbar:', showNavbar);
 
   if (currentScreen === 'auth') {
@@ -138,11 +158,21 @@ export default function AppNavigator() {
         {renderScreen()}
       </View>
       
+      {/* Bouton d'aide fixe */}
+      {showHelpButton && (
+        <HelpButton 
+          currentScreen={currentScreen}
+          onPress={() => navigateToHelp(currentScreen)}
+        />
+      )}
+      
       {/* Navbar flottante en position absolue */}
-      <SimpleTabBar 
-        currentScreen={currentScreen}
-        onTabPress={(screen) => navigate(screen as Screen)}
-      />
+      {showNavbar && currentScreen !== 'help' && (
+        <SimpleTabBar 
+          currentScreen={currentScreen}
+          onTabPress={(screen) => navigate(screen as Screen)}
+        />
+      )}
     </View>
   );
 }

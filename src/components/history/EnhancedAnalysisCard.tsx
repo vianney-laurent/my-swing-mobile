@@ -181,15 +181,7 @@ export default function EnhancedAnalysisCard({ analysis, onPress, index }: Enhan
         </View>
       </View>
 
-      {/* Indicateur de nouveau (si récent) */}
-      {(() => {
-        const hoursAgo = (new Date().getTime() - new Date(analysis.created_at).getTime()) / (1000 * 60 * 60);
-        return hoursAgo < 2 ? (
-          <View style={styles.newBadge}>
-            <Text style={styles.newBadgeText}>Nouveau</Text>
-          </View>
-        ) : null;
-      })()}
+
     </TouchableOpacity>
   );
 }
@@ -333,25 +325,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Badge nouveau
-  newBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: '#ef4444',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  newBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: 'white',
-    textTransform: 'uppercase',
-  },
+
 });

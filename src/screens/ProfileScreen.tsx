@@ -27,7 +27,11 @@ interface UserStats {
   bestScore: number;
 }
 
-export default function ProfileScreen() {
+interface ProfileScreenProps {
+  onNavigateToHelp?: () => void;
+}
+
+export default function ProfileScreen({ onNavigateToHelp }: ProfileScreenProps) {
   const { containerPaddingBottom } = useSafeBottomPadding();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -320,6 +324,27 @@ export default function ProfileScreen() {
             <View style={styles.legalItemContent}>
               <Ionicons name="settings" size={20} color="#3b82f6" />
               <Text style={styles.legalItemText}>Politique des cookies</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.legalItem}
+            onPress={() => {
+              if (onNavigateToHelp) {
+                onNavigateToHelp();
+              } else {
+                Alert.alert(
+                  'Centre d\'aide',
+                  'Utilisez l\'icône ? en haut à droite de chaque écran pour obtenir de l\'aide contextuelle.',
+                  [{ text: 'OK' }]
+                );
+              }
+            }}
+          >
+            <View style={styles.legalItemContent}>
+              <Ionicons name="help-circle" size={20} color="#3b82f6" />
+              <Text style={styles.legalItemText}>Centre d'aide</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
           </TouchableOpacity>

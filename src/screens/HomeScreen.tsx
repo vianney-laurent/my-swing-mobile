@@ -19,6 +19,7 @@ import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
 import { ShimmerEffect, ShimmerStatCard } from '../components/ui/ShimmerEffect';
 import DailyTipCard from '../components/tips/DailyTipCard';
 
+
 interface HomeScreenProps {
   navigation: any;
 }
