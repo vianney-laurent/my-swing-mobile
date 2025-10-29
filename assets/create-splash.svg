@@ -1,0 +1,60 @@
+<svg width="1080" height="1920" viewBox="0 0 1080 1920" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="splashBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#059669;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#047857;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8fafc;stop-opacity:0.9" />
+    </linearGradient>
+    <radialGradient id="glowEffect" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1080" height="1920" fill="url(#splashBg)"/>
+  
+  <!-- Glow effect -->
+  <circle cx="540" cy="960" r="400" fill="url(#glowEffect)"/>
+  
+  <!-- Main logo circle -->
+  <circle cx="540" cy="960" r="180" fill="url(#logoGradient)" stroke="#ffffff" stroke-width="4" opacity="0.95"/>
+  
+  <!-- Golf club -->
+  <rect x="532" y="840" width="8" height="160" fill="#047857" rx="4"/>
+  
+  <!-- Golf club head -->
+  <rect x="520" y="990" width="32" height="12" fill="#047857" rx="2"/>
+  
+  <!-- Golf ball -->
+  <circle cx="540" cy="1020" r="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+  
+  <!-- Golf ball dimples -->
+  <circle cx="537" cy="1017" r="1" fill="#e2e8f0" opacity="0.7"/>
+  <circle cx="543" cy="1017" r="1" fill="#e2e8f0" opacity="0.7"/>
+  <circle cx="537" cy="1023" r="1" fill="#e2e8f0" opacity="0.7"/>
+  <circle cx="543" cy="1023" r="1" fill="#e2e8f0" opacity="0.7"/>
+  
+  <!-- Swing arc -->
+  <path d="M 420 900 Q 540 860 660 900" stroke="#047857" stroke-width="4" fill="none" opacity="0.8" stroke-linecap="round"/>
+  <path d="M 420 900 Q 540 870 660 900" stroke="#047857" stroke-width="2" fill="none" opacity="0.4" stroke-linecap="round"/>
+  
+  <!-- App name -->
+  <text x="540" y="1200" font-family="Arial, sans-serif" font-size="72" font-weight="bold" text-anchor="middle" fill="white">My Swing</text>
+  <text x="540" y="1260" font-family="Arial, sans-serif" font-size="32" font-weight="normal" text-anchor="middle" fill="rgba(255,255,255,0.8)">Analyse de swing golf</text>
+  
+  <!-- Loading indicator -->
+  <circle cx="540" cy="1400" r="20" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="3"/>
+  <circle cx="540" cy="1400" r="20" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" 
+          stroke-dasharray="31.416" stroke-dashoffset="31.416" opacity="0.8">
+    <animate attributeName="stroke-dashoffset" values="31.416;0;31.416" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Subtitle -->
+  <text x="540" y="1500" font-family="Arial, sans-serif" font-size="24" font-weight="normal" text-anchor="middle" fill="rgba(255,255,255,0.6)">Chargement...</text>
+</svg>
