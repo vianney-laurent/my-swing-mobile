@@ -5,6 +5,7 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../supabase/client';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export interface MobileAnalysisRequest {
   videoUri: string; // URI local de la vidéo sur mobile
@@ -101,47 +102,62 @@ export class MobileAnalysisService {
     const analysisId = this.generateAnalysisId();
     
     try {
-      // Étape 1: Upload et traitement vidéo
+      // Étape 1: Upload vers Supabase
       onProgress?.({
         step: 'uploading',
-        progress: 10,
-        message: 'Préparation de la vidéo...'
+        progress: 5,
+        message: 'Upload de la vidéo vers Supabase...'
+      });
+      
+      const supabaseVideoUrl = await this.uploadVideoToSupabase(request.videoUri, (progress) => {
+        onProgress?.({
+          step: 'uploading',
+          progress: 5 + (progress * 0.25), // 5-30%
+          message: 'Upload en cours...'
+        });
+      }, analysisId);
+      
+      // Étape 2: Traitement vidéo pour l'analyse
+      onProgress?.({
+        step: 'processing',
+        progress: 30,
+        message: 'Traitement de la vidéo...'
       });
       
       const videoBase64 = await this.processVideoForAnalysis(request.videoUri, (progress) => {
         onProgress?.({
           step: 'processing',
-          progress: 10 + (progress * 0.3), // 10-40%
-          message: 'Traitement de la vidéo...'
+          progress: 30 + (progress * 0.15), // 30-45%
+          message: 'Préparation pour l\'analyse...'
         });
       });
       
-      // Étape 2: Récupération du profil utilisateur
+      // Étape 3: Récupération du profil utilisateur
       onProgress?.({
         step: 'processing',
-        progress: 45,
+        progress: 50,
         message: 'Récupération du profil...'
       });
       
       const userProfile = await this.getCurrentUserProfile();
       
-      // Étape 3: Analyse avec Gemini
+      // Étape 4: Analyse avec Gemini
       onProgress?.({
         step: 'analyzing',
-        progress: 50,
+        progress: 55,
         message: 'Analyse IA en cours...'
       });
       
       const analysis = await this.performGeminiAnalysis(request, videoBase64, userProfile);
       
-      // Étape 4: Sauvegarde en base
+      // Étape 5: Sauvegarde en base avec l'URL Supabase
       onProgress?.({
         step: 'saving',
         progress: 90,
         message: 'Sauvegarde de l\'analyse...'
       });
       
-      await this.saveAnalysisToDatabase(analysisId, request, analysis);
+      await this.saveAnalysisToDatabase(analysisId, request, analysis, supabaseVideoUrl);
       
       onProgress?.({
         step: 'completed',
@@ -258,36 +274,41 @@ export class MobileAnalysisService {
     try {
       onProgress?.(30);
       
-      // Lire le fichier vidéo local
-      console.log('📱 Fetching video from URI...');
-      const response = await fetch(videoUri);
+      // Vérifier que le fichier existe
+      console.log('📱 Checking video file...');
+      const fileInfo = await FileSystem.getInfoAsync(videoUri);
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch video: ${response.status} ${response.statusText}`);
+      if (!fileInfo.exists) {
+        throw new Error('Video file does not exist');
       }
       
-      const blob = await response.blob();
-      console.log(`📱 Blob created: ${blob.size} bytes, type: ${blob.type}`);
+      console.log(`📊 Video file info:`, {
+        size: 'size' in fileInfo ? fileInfo.size : 'unknown',
+        uri: fileInfo.uri,
+        exists: fileInfo.exists
+      });
       
       onProgress?.(60);
       
       // Vérifier la taille
-      const sizeInMB = blob.size / (1024 * 1024);
-      console.log(`📊 Video size: ${sizeInMB.toFixed(2)} MB`);
-      
-      if (sizeInMB === 0) {
-        throw new Error('Video file is empty (0 MB)');
-      }
-      
-      if (sizeInMB > 50) {
-        throw new Error(`Vidéo trop volumineuse: ${sizeInMB.toFixed(2)}MB (max 50MB)`);
+      const sizeInMB = ('size' in fileInfo && fileInfo.size) ? fileInfo.size / (1024 * 1024) : 0;
+      if (sizeInMB > 0) {
+        console.log(`📊 Video size: ${sizeInMB.toFixed(2)} MB`);
+        
+        if (sizeInMB > 50) {
+          throw new Error(`Vidéo trop volumineuse: ${sizeInMB.toFixed(2)}MB (max 50MB)`);
+        }
+      } else {
+        console.log(`📊 Video size: Unknown (legacy API limitation)`);
       }
       
       onProgress?.(80);
       
-      // Convertir en base64
-      console.log('📱 Converting to base64...');
-      const base64 = await this.blobToBase64(blob);
+      // Lire directement en base64
+      console.log('📱 Reading video as base64...');
+      const base64 = await FileSystem.readAsStringAsync(videoUri, {
+        encoding: 'base64',
+      });
       
       console.log(`📱 Base64 conversion result: ${base64.length} characters`);
       console.log(`📱 Base64 preview: ${base64.substring(0, 50)}...`);
@@ -329,16 +350,16 @@ export class MobileAnalysisService {
       
       onProgress?.(20);
       
-      // Lire le fichier vidéo local avec retry
-      console.log('📱 Fetching video with retry logic...');
-      let response: Response;
+      // Vérifier le fichier avec retry logic
+      console.log('📱 Checking video file with retry logic...');
+      let fileInfo: FileSystem.FileInfo;
       let retries = 3;
       
       while (retries > 0) {
         try {
-          response = await fetch(videoUri);
-          if (response.ok) break;
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          fileInfo = await FileSystem.getInfoAsync(videoUri);
+          if (fileInfo.exists) break;
+          throw new Error('File does not exist');
         } catch (error) {
           retries--;
           if (retries === 0) throw error;
@@ -349,26 +370,36 @@ export class MobileAnalysisService {
       
       onProgress?.(40);
       
-      const blob = await response!.blob();
-      console.log(`📱 Blob created: ${blob.size} bytes, type: ${blob.type}`);
+      console.log(`📊 Video file info:`, {
+        size: 'size' in fileInfo! ? fileInfo!.size : 'unknown',
+        uri: fileInfo!.uri,
+        exists: fileInfo!.exists
+      });
       
-      // Validation stricte du blob
-      if (!blob || blob.size === 0) {
-        throw new Error('Video blob is empty or invalid');
+      // Validation stricte du fichier
+      if (!fileInfo!.exists) {
+        throw new Error('Video file does not exist');
       }
       
-      const sizeInMB = blob.size / (1024 * 1024);
-      console.log(`📊 Video size: ${sizeInMB.toFixed(2)} MB`);
-      
-      if (sizeInMB > 50) {
-        throw new Error(`Video too large: ${sizeInMB.toFixed(2)}MB (max 50MB)`);
+      // Pour l'API legacy, on ne peut pas toujours obtenir la taille, donc on continue
+      const sizeInMB = ('size' in fileInfo! && fileInfo!.size) ? fileInfo!.size / (1024 * 1024) : 0;
+      if (sizeInMB > 0) {
+        console.log(`📊 Video size: ${sizeInMB.toFixed(2)} MB`);
+        
+        if (sizeInMB > 50) {
+          throw new Error(`Video too large: ${sizeInMB.toFixed(2)}MB (max 50MB)`);
+        }
+      } else {
+        console.log(`📊 Video size: Unknown (legacy API limitation)`);
       }
       
       onProgress?.(60);
       
-      // Conversion base64 avec validation
-      console.log('📱 Converting to base64 with validation...');
-      const base64 = await this.blobToBase64Enhanced(blob);
+      // Lecture base64 avec validation
+      console.log('📱 Reading video as base64 with validation...');
+      const base64 = await FileSystem.readAsStringAsync(videoUri, {
+        encoding: 'base64',
+      });
       
       onProgress?.(80);
       
@@ -397,73 +428,130 @@ export class MobileAnalysisService {
   }
 
   /**
-   * Convertit un blob en base64 avec validation renforcée
+   * Upload la vidéo vers Supabase Storage
    */
-  private blobToBase64Enhanced(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      console.log('📱 Starting base64 conversion...');
+  private async uploadVideoToSupabase(
+    videoUri: string,
+    onProgress?: (progress: number) => void,
+    analysisId?: string
+  ): Promise<string> {
+    
+    console.log('☁️ Uploading video to Supabase Storage...');
+    console.log(`📱 Video URI: ${videoUri}`);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const reader = new FileReader();
+      if (!user) {
+        throw new Error('User not authenticated for video upload');
+      }
       
-      reader.onload = () => {
-        try {
-          const result = reader.result as string;
-          
-          if (!result) {
-            throw new Error('FileReader result is null');
-          }
-          
-          console.log(`📱 FileReader result length: ${result.length}`);
-          console.log(`📱 FileReader result preview: ${result.substring(0, 100)}...`);
-          
-          // Vérifier le format data URL
-          if (!result.startsWith('data:')) {
-            throw new Error('Invalid data URL format');
-          }
-          
-          // Extraire le base64 (après la virgule)
-          const commaIndex = result.indexOf(',');
-          if (commaIndex === -1) {
-            throw new Error('No comma found in data URL');
-          }
-          
-          const base64 = result.substring(commaIndex + 1);
-          
-          if (!base64) {
-            throw new Error('Empty base64 after comma');
-          }
-          
-          console.log(`📱 Extracted base64 length: ${base64.length}`);
-          
-          resolve(base64);
-          
-        } catch (error) {
-          console.error('❌ Base64 conversion error:', error);
-          reject(error);
+      onProgress?.(10);
+      
+      // Lire le fichier vidéo avec expo-file-system
+      console.log('📱 Reading video file info...');
+      const fileInfo = await FileSystem.getInfoAsync(videoUri);
+      
+      if (!fileInfo.exists) {
+        throw new Error('Video file does not exist');
+      }
+      
+      console.log(`📊 Video file info:`, {
+        size: 'size' in fileInfo ? fileInfo.size : 'unknown',
+        uri: fileInfo.uri,
+        exists: fileInfo.exists
+      });
+      
+      onProgress?.(30);
+      
+      // Vérifier la taille (limite Supabase)
+      const sizeInMB = ('size' in fileInfo && fileInfo.size) ? fileInfo.size / (1024 * 1024) : 0;
+      if (sizeInMB > 0) {
+        console.log(`📊 Video size: ${sizeInMB.toFixed(2)} MB`);
+        
+        if (sizeInMB > 100) { // Limite Supabase
+          throw new Error(`Video too large for upload: ${sizeInMB.toFixed(2)}MB (max 100MB)`);
         }
-      };
+      } else {
+        console.log(`📊 Video size: Unknown (legacy API limitation)`);
+      }
       
-      reader.onerror = (error) => {
-        console.error('❌ FileReader error:', error);
-        reject(new Error('FileReader failed'));
-      };
+      onProgress?.(50);
       
-      reader.onabort = () => {
-        console.error('❌ FileReader aborted');
-        reject(new Error('FileReader aborted'));
-      };
+      // Générer le nom de fichier selon votre structure : analysis-[id]
+      const fileName = analysisId ? `analysis-${analysisId}.mp4` : `analysis-${Date.now()}.mp4`;
+      const filePath = `${user.id}/${fileName}`;
       
-      console.log('📱 Starting FileReader.readAsDataURL...');
-      reader.readAsDataURL(blob);
-    });
+      console.log(`📁 Upload path: ${filePath}`);
+      
+      onProgress?.(60);
+      
+      // Lire le fichier en base64 pour l'upload
+      console.log('📱 Reading file as base64...');
+      const base64 = await FileSystem.readAsStringAsync(videoUri, {
+        encoding: 'base64',
+      });
+      
+      if (!base64 || base64.length === 0) {
+        throw new Error('Failed to read video file as base64');
+      }
+      
+      console.log(`📊 Base64 length: ${base64.length} characters`);
+      
+      onProgress?.(70);
+      
+      // Convertir base64 en Uint8Array pour Supabase
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      onProgress?.(80);
+      
+      // Upload vers Supabase Storage
+      console.log('☁️ Uploading to Supabase Storage...');
+      const { data, error } = await supabase.storage
+        .from('videos')
+        .upload(filePath, bytes, {
+          contentType: 'video/mp4',
+          upsert: false
+        });
+      
+      if (error) {
+        console.error('❌ Supabase upload error:', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
+      
+      if (!data?.path) {
+        throw new Error('No file path returned from Supabase upload');
+      }
+      
+      onProgress?.(90);
+      
+      // Générer l'URL publique
+      const { data: urlData } = supabase.storage
+        .from('videos')
+        .getPublicUrl(data.path);
+      
+      if (!urlData?.publicUrl) {
+        throw new Error('Failed to generate public URL');
+      }
+      
+      onProgress?.(100);
+      
+      console.log('✅ Video uploaded successfully to Supabase');
+      console.log(`🔗 Public URL: ${urlData.publicUrl}`);
+      
+      return urlData.publicUrl;
+      
+    } catch (error) {
+      console.error('❌ Video upload to Supabase failed:', error);
+      throw new Error(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
-  /**
-   * Convertit un blob en base64 (méthode originale - gardée pour compatibilité)
-   */
-  private blobToBase64(blob: Blob): Promise<string> {
-    return this.blobToBase64Enhanced(blob);
-  }
+
 
   /**
    * Récupère le profil utilisateur actuel
@@ -902,7 +990,8 @@ Cette vue permet d'analyser l'alignement et les mouvements latéraux.`;
   private async saveAnalysisToDatabase(
     analysisId: string,
     request: MobileAnalysisRequest,
-    analysis: MobileAnalysisResult
+    analysis: MobileAnalysisResult,
+    supabaseVideoUrl: string
   ): Promise<void> {
     
     try {
@@ -935,7 +1024,7 @@ Cette vue permet d'analyser l'alignement et les mouvements latéraux.`;
         .insert({
           id: analysisId,
           user_id: user.id,
-          video_url: request.videoUri,
+          video_url: supabaseVideoUrl, // Utiliser l'URL Supabase au lieu de l'URI local
           analysis_type: 'coaching', // Utiliser le type existant
           target_issue: null,
           status: 'completed',
