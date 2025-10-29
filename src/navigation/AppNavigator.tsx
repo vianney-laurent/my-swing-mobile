@@ -103,7 +103,9 @@ export default function AppNavigator() {
       case 'analysisResult':
         return analysisId ? <AnalysisResultScreen 
           route={{ params: { analysisId } }} 
-          navigation={{ goBack }} 
+          navigation={{ 
+            goBack: () => navigate('history') // Rediriger vers l'historique après suppression
+          }} 
         /> : null;
       case 'profile':
         return <ProfileScreen />;
