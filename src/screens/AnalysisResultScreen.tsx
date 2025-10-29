@@ -11,7 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { mobileAnalysisService } from '../lib/analysis/analysis-service';
+import { mobileAnalysisService as newAnalysisService } from '../lib/analysis/mobile-analysis-service';
 import EnhancedVideoPlayer from '../components/EnhancedVideoPlayer';
+import DeleteConfirmationModal from '../components/ui/DeleteConfirmationModal';
 
 interface AnalysisResultScreenProps {
   route: {
@@ -27,6 +29,8 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
   const { analysisId } = route.params;
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadAnalysis();
@@ -132,6 +136,32 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleDeleteAnalysis = async () => {
+    try {
+      setIsDeleting(true);
+      console.log('🗑️ Deleting analysis:', analysisId);
+      
+      await newAnalysisService.deleteAnalysis(analysisId);
+      
+      console.log('✅ Analysis deleted successfully');
+      setShowDeleteModal(false);
+      
+      // Redirection directe vers l'historique sans message de confirmation
+      navigation.goBack();
+      
+    } catch (error) {
+      console.error('❌ Delete analysis failed:', error);
+      setIsDeleting(false);
+      setShowDeleteModal(false);
+      
+      Alert.alert(
+        'Erreur de suppression',
+        error instanceof Error ? error.message : 'Une erreur est survenue lors de la suppression',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   if (loading) {
@@ -479,25 +509,27 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
           </View>
         )}
 
-        {/* Boutons d'action */}
+        {/* Bouton de suppression */}
         <View style={styles.actionButtons}>
           <TouchableOpacity 
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('camera')}
+            style={styles.deleteButton}
+            onPress={() => setShowDeleteModal(true)}
           >
-            <Ionicons name="camera" size={20} color="white" />
-            <Text style={styles.primaryButtonText}>Nouvelle Analyse</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('history')}
-          >
-            <Ionicons name="time" size={20} color="#3b82f6" />
-            <Text style={styles.secondaryButtonText}>Voir l'Historique</Text>
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            <Text style={styles.deleteButtonText}>Supprimer cette analyse</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Modal de confirmation de suppression */}
+      <DeleteConfirmationModal
+        visible={showDeleteModal}
+        onConfirm={handleDeleteAnalysis}
+        onCancel={() => setShowDeleteModal(false)}
+        isDeleting={isDeleting}
+        title="Supprimer l'analyse"
+        message="Êtes-vous sûr de vouloir supprimer cette analyse ? Cette action est irréversible et supprimera également la vidéo associée de votre stockage."
+      />
     </SafeAreaView>
   );
 }
@@ -1158,33 +1190,11 @@ const styles = StyleSheet.create({
 
   // Boutons d'action
   actionButtons: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingBottom: 32,
-    gap: 12,
+    paddingBottom: 100, // Augmenté significativement pour éviter le recouvrement par la tabbar
+    paddingTop: 8,
   },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: '#10b981',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#10b981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  secondaryButton: {
-    flex: 1,
+  deleteButton: {
     backgroundColor: 'white',
     flexDirection: 'row',
     alignItems: 'center',
@@ -1192,12 +1202,17 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#3b82f6',
+    borderColor: '#ef4444',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  secondaryButtonText: {
-    color: '#3b82f6',
+  deleteButtonText: {
+    color: '#ef4444',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     marginLeft: 8,
   },
 

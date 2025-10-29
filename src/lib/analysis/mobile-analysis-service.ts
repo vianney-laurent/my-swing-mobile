@@ -1074,6 +1074,88 @@ Cette vue permet d'analyser l'alignement et les mouvements latéraux.`;
     }, 0);
     return Math.abs(uriHash).toString(16) + timestamp.slice(-6);
   }
+
+  /**
+   * Supprime une analyse et sa vidéo associée
+   */
+  async deleteAnalysis(analysisId: string): Promise<void> {
+    console.log('🗑️ Starting analysis deletion:', analysisId);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // 1. Récupérer l'analyse pour obtenir l'URL de la vidéo
+      console.log('📋 Fetching analysis data...');
+      const { data: analysis, error: fetchError } = await supabase
+        .from('analyses')
+        .select('video_url')
+        .eq('id', analysisId)
+        .eq('user_id', user.id) // Sécurité : s'assurer que l'utilisateur possède l'analyse
+        .single();
+
+      if (fetchError) {
+        console.error('❌ Error fetching analysis:', fetchError);
+        throw new Error(`Failed to fetch analysis: ${fetchError.message}`);
+      }
+
+      if (!analysis) {
+        throw new Error('Analysis not found or access denied');
+      }
+
+      // 2. Supprimer la vidéo de Supabase Storage si elle existe
+      if (analysis.video_url) {
+        console.log('🎥 Deleting video from Supabase Storage...');
+        
+        try {
+          // Extraire le chemin du fichier depuis l'URL Supabase
+          const urlParts = analysis.video_url.split('/storage/v1/object/public/videos/');
+          if (urlParts.length === 2) {
+            const filePath = urlParts[1];
+            console.log('📁 Video file path:', filePath);
+
+            const { error: deleteVideoError } = await supabase.storage
+              .from('videos')
+              .remove([filePath]);
+
+            if (deleteVideoError) {
+              console.warn('⚠️ Warning: Could not delete video file:', deleteVideoError.message);
+              // Ne pas faire échouer la suppression si la vidéo n'existe plus
+            } else {
+              console.log('✅ Video deleted successfully from storage');
+            }
+          } else {
+            console.warn('⚠️ Warning: Invalid video URL format, skipping video deletion');
+          }
+        } catch (videoError) {
+          console.warn('⚠️ Warning: Error deleting video:', videoError);
+          // Ne pas faire échouer la suppression de l'analyse si la vidéo ne peut pas être supprimée
+        }
+      }
+
+      // 3. Supprimer l'analyse de la base de données
+      console.log('📊 Deleting analysis from database...');
+      const { error: deleteAnalysisError } = await supabase
+        .from('analyses')
+        .delete()
+        .eq('id', analysisId)
+        .eq('user_id', user.id); // Double sécurité
+
+      if (deleteAnalysisError) {
+        console.error('❌ Error deleting analysis:', deleteAnalysisError);
+        throw new Error(`Failed to delete analysis: ${deleteAnalysisError.message}`);
+      }
+
+      console.log('✅ Analysis deleted successfully');
+      
+    } catch (error) {
+      console.error('❌ Analysis deletion failed:', error);
+      throw new Error(`Deletion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }
 
 export const mobileAnalysisService = new MobileAnalysisService();
