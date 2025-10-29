@@ -597,6 +597,14 @@ export class MobileAnalysisService {
     console.log('🤖 Starting Gemini analysis...');
     
     try {
+      // Vérifier la taille de la vidéo (limite Gemini ~20MB en base64)
+      const videoSizeMB = (videoBase64.length * 3) / (4 * 1024 * 1024); // Approximation de la taille décodée
+      console.log(`📊 Video size estimate: ${videoSizeMB.toFixed(2)} MB`);
+      
+      if (videoSizeMB > 15) {
+        throw new Error(`Video trop volumineuse (${videoSizeMB.toFixed(2)} MB). Veuillez enregistrer une vidéo plus courte.`);
+      }
+      
       // Vérifier que le base64 n'est pas vide
       if (!videoBase64 || videoBase64.length === 0) {
         throw new Error('Video base64 is empty');
@@ -629,7 +637,7 @@ export class MobileAnalysisService {
       
       // Analyser avec Gemini 2.0 Flash
       const genAI = this.initializeGenAI();
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
       
       console.log('🔄 Sending video to Gemini...');
       const result = await model.generateContent([prompt, videoPart]);

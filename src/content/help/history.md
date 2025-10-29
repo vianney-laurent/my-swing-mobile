@@ -7,13 +7,11 @@ Consultez et gérez toutes vos analyses de swing précédentes.
 ### Organisation des analyses
 - **Tri chronologique** : Les plus récentes en premier
 - **Cartes d'analyse** : Aperçu rapide de chaque session
-- **Filtres** : Recherche par date, club ou score
 
 ### Informations affichées
 - Date et heure de l'analyse
 - Club utilisé
 - Score global obtenu
-- Miniature de la vidéo
 - Statut de l'analyse
 
 ## Navigation dans l'historique
@@ -29,18 +27,6 @@ En appuyant sur une analyse, vous accédez à :
 - Analyse détaillée point par point
 - Conseils d'amélioration
 - Comparaison avec vos autres swings
-
-## Gestion des analyses
-
-### Supprimer une analyse
-1. Glissez vers la gauche sur la carte
-2. Appuyez sur "Supprimer"
-3. Confirmez votre choix
-
-### Partager une analyse
-- Partagez vos progrès avec votre coach
-- Exportez les résultats en PDF
-- Envoyez la vidéo à un ami
 
 ## Suivi des progrès
 
