@@ -1,5 +1,6 @@
 // Authentication service for React Native
 import { supabase } from '../supabase/client';
+import { SecureStorageService } from './secure-storage';
 
 export interface SignUpData {
   email: string;
@@ -10,6 +11,7 @@ export interface SignUpData {
 export interface SignInData {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface AuthResult {
@@ -53,10 +55,25 @@ export class AuthService {
   }
 
   // Sign in existing user
-  static async signIn({ email, password }: SignInData): Promise<AuthResult> {
+  static async signIn({ email, password, rememberMe = false }: SignInData): Promise<AuthResult> {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      return { user: data?.user || null, error };
+      
+      if (error) {
+        return { user: null, error };
+      }
+
+      // Sauvegarder les credentials si connexion réussie et rememberMe activé
+      if (data?.user && data?.session) {
+        await SecureStorageService.saveCredentials(
+          email, 
+          data.session.access_token, 
+          rememberMe
+        );
+        console.log('✅ User signed in successfully, credentials saved:', { rememberMe });
+      }
+
+      return { user: data?.user || null, error: null };
     } catch (error) {
       console.error('Sign in error:', error);
       return { 
@@ -69,9 +86,19 @@ export class AuthService {
   }
 
   // Sign out user
-  static async signOut(): Promise<{ error: any | null }> {
+  static async signOut(clearCredentials: boolean = false): Promise<{ error: any | null }> {
     try {
       const { error } = await supabase.auth.signOut();
+      
+      // Supprimer les credentials si demandé ou désactiver juste remember me
+      if (clearCredentials) {
+        await SecureStorageService.clearCredentials();
+        console.log('✅ User signed out, credentials cleared');
+      } else {
+        await SecureStorageService.disableRememberMe();
+        console.log('✅ User signed out, remember me disabled');
+      }
+      
       return { error };
     } catch (error) {
       console.error('Sign out error:', error);
@@ -121,6 +148,51 @@ export class AuthService {
       return { isValid: false, message: 'Le mot de passe doit contenir au moins 8 caractères' };
     }
     return { isValid: true };
+  }
+
+  // Tentative de reconnexion automatique avec les credentials sauvegardés
+  static async attemptAutoLogin(): Promise<AuthResult> {
+    try {
+      console.log('🔄 Attempting auto login...');
+      
+      // Vérifier si remember me est activé
+      const isEnabled = await SecureStorageService.isRememberMeEnabled();
+      if (!isEnabled) {
+        console.log('❌ Remember me not enabled');
+        return { user: null, error: null };
+      }
+
+      // Vérifier si les credentials ne sont pas expirés
+      const isExpired = await SecureStorageService.areCredentialsExpired();
+      if (isExpired) {
+        console.log('❌ Stored credentials expired');
+        await SecureStorageService.clearCredentials();
+        return { user: null, error: null };
+      }
+
+      // Essayer de récupérer la session existante
+      const session = await this.getCurrentSession();
+      if (session?.user) {
+        console.log('✅ Auto login successful with existing session');
+        return { user: session.user, error: null };
+      }
+
+      console.log('❌ No valid session found');
+      return { user: null, error: null };
+    } catch (error) {
+      console.error('❌ Auto login error:', error);
+      return { user: null, error };
+    }
+  }
+
+  // Obtenir le dernier email utilisé pour pré-remplir le formulaire
+  static async getLastUsedEmail(): Promise<string | null> {
+    return await SecureStorageService.getLastEmail();
+  }
+
+  // Vérifier si remember me est activé
+  static async isRememberMeEnabled(): Promise<boolean> {
+    return await SecureStorageService.isRememberMeEnabled();
   }
 
   // Format auth error messages in French

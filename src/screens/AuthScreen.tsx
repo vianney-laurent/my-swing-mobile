@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase/client';
+import { AuthService } from '../lib/auth/auth-service';
 
 interface AuthScreenProps {
   onAuthSuccess: (user: any) => void;
@@ -25,6 +26,24 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true); // Activé par défaut
+
+  // Charger le dernier email utilisé au montage du composant
+  React.useEffect(() => {
+    const loadLastEmail = async () => {
+      try {
+        const lastEmail = await AuthService.getLastUsedEmail();
+        if (lastEmail) {
+          setEmail(lastEmail);
+          console.log('📧 Last used email loaded:', lastEmail);
+        }
+      } catch (error) {
+        console.error('❌ Error loading last email:', error);
+      }
+    };
+
+    loadLastEmail();
+  }, []);
 
   const handleAuth = async () => {
     if (!email || !password) {
@@ -36,14 +55,14 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       setLoading(true);
       
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
+        const result = await AuthService.signUp({
           email: email.trim(),
           password: password,
         });
         
-        if (error) {
-          Alert.alert('Erreur d\'inscription', error.message);
-        } else if (data?.user) {
+        if (result.error) {
+          Alert.alert('Erreur d\'inscription', AuthService.formatAuthError(result.error));
+        } else if (result.user) {
           Alert.alert(
             'Inscription réussie', 
             'Vérifiez votre email pour confirmer votre compte'
@@ -51,15 +70,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           setIsSignUp(false);
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const result = await AuthService.signIn({
           email: email.trim(),
           password: password,
+          rememberMe: rememberMe,
         });
         
-        if (error) {
-          Alert.alert('Erreur de connexion', error.message);
-        } else if (data?.user) {
-          onAuthSuccess(data.user);
+        if (result.error) {
+          Alert.alert('Erreur de connexion', AuthService.formatAuthError(result.error));
+        } else if (result.user) {
+          console.log('✅ Authentication successful, remember me:', rememberMe);
+          onAuthSuccess(result.user);
         }
       }
     } catch (error) {
@@ -271,6 +292,22 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               />
             </View>
             
+            {/* Se souvenir de moi - seulement en mode connexion */}
+            {!isSignUp && (
+              <TouchableOpacity 
+                style={styles.rememberMeContainer}
+                onPress={() => setRememberMe(!rememberMe)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && (
+                    <Ionicons name="checkmark" size={16} color="white" />
+                  )}
+                </View>
+                <Text style={styles.rememberMeText}>Se souvenir de moi</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Mot de passe oublié - seulement en mode connexion */}
             {!isSignUp && (
               <TouchableOpacity 
@@ -460,6 +497,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#475569',
     marginLeft: 16,
+    fontWeight: '500',
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  checkboxChecked: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  rememberMeText: {
+    fontSize: 14,
+    color: '#475569',
     fontWeight: '500',
   },
   forgotPasswordLink: {
