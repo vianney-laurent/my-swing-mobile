@@ -54,7 +54,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
     try {
       setLoading(true);
-      
+
       // Mode connexion seulement
       {
         const result = await AuthService.signIn({
@@ -62,7 +62,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           password: password,
           rememberMe: rememberMe,
         });
-        
+
         if (result.error) {
           Alert.alert('Erreur de connexion', AuthService.formatAuthError(result.error));
         } else if (result.user) {
@@ -91,7 +91,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
     try {
       setLoading(true);
-      
+
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: 'myswing://reset-password', // Deep link pour l'app mobile
       });
@@ -146,7 +146,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               <Text style={styles.helpText}>• Vérifiez que l'adresse est correcte</Text>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.secondaryButton}
               onPress={() => {
                 setResetEmailSent(false);
@@ -166,7 +166,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   if (showForgotPassword) {
     return (
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
@@ -196,7 +196,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 />
               </View>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.authButton, loading && styles.authButtonDisabled]}
                 onPress={handleForgotPassword}
                 disabled={loading}
@@ -207,7 +207,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.secondaryButton}
                 onPress={() => setShowForgotPassword(false)}
               >
@@ -234,10 +234,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       <SignupForm
         onSuccess={() => {
           setIsSignUp(false);
-          Alert.alert(
-            'Inscription réussie !',
-            'Vérifiez votre email pour confirmer votre compte, puis connectez-vous.'
-          );
+          // Pas de pop-up - redirection fluide vers l'app
         }}
         onBackToSignIn={() => setIsSignUp(false)}
       />
@@ -247,11 +244,11 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   // Écran principal de connexion
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -281,7 +278,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 placeholderTextColor="#94a3b8"
               />
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color="#64748b" style={styles.inputIcon} />
               <TextInput
@@ -294,10 +291,10 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 placeholderTextColor="#94a3b8"
               />
             </View>
-            
+
             {/* Se souvenir de moi - seulement en mode connexion */}
             {!isSignUp && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.rememberMeContainer}
                 onPress={() => setRememberMe(!rememberMe)}
                 activeOpacity={0.7}
@@ -313,15 +310,15 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
             {/* Mot de passe oublié - seulement en mode connexion */}
             {!isSignUp && (
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.forgotPasswordLink}
                 onPress={() => setShowForgotPassword(true)}
               >
                 <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
               </TouchableOpacity>
             )}
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[styles.authButton, loading && styles.authButtonDisabled]}
               onPress={handleAuth}
               disabled={loading}
@@ -347,17 +344,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {/* Features */}
           <View style={styles.features}>
             <Text style={styles.featuresTitle}>Analysez votre swing de golf</Text>
-            
+
             <View style={styles.feature}>
               <Ionicons name="videocam" size={24} color="#10b981" />
               <Text style={styles.featureText}>Enregistrement vidéo intelligent</Text>
             </View>
-            
+
             <View style={styles.feature}>
               <Ionicons name="analytics" size={24} color="#10b981" />
               <Text style={styles.featureText}>Analyse IA personnalisée</Text>
             </View>
-            
+
             <View style={styles.feature}>
               <Ionicons name="trending-up" size={24} color="#10b981" />
               <Text style={styles.featureText}>Suivi de vos progrès</Text>
