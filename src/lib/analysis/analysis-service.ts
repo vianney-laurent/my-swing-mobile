@@ -16,39 +16,104 @@ export interface AnalysisResult {
 }
 
 export class AnalysisService {
-  // Upload video to Supabase storage
-  static async uploadVideo(videoUri: string, userId: string): Promise<string | null> {
+  // Direct upload to Supabase storage
+  private static async uploadVideoToSupabase(videoUri: string, userId: string): Promise<{
+    success: boolean;
+    videoUrl?: string;
+    error?: string;
+    fileSize?: number;
+  }> {
     try {
-      // Create unique filename
+      console.log('🎬 [AnalysisService] Direct upload to Supabase...');
+
+      // Import FileSystem for reading the video
+      const FileSystem = await import('expo-file-system/legacy');
+
+      // Read video as base64
+      const base64Data = await FileSystem.readAsStringAsync(videoUri, {
+        encoding: 'base64',
+      });
+
+      if (!base64Data) {
+        throw new Error('Failed to read video file');
+      }
+
+      // Convert base64 to Uint8Array
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Generate unique filename
       const timestamp = Date.now();
-      const filename = `${userId}/${timestamp}.mp4`;
+      const fileName = `video_${userId}_${timestamp}.mp4`;
 
-      // Read video file (React Native specific)
-      const response = await fetch(videoUri);
-      const blob = await response.blob();
-
-      // Upload to Supabase storage
+      // Upload to Supabase
       const { data, error } = await supabase.storage
         .from('videos')
-        .upload(filename, blob, {
+        .upload(fileName, bytes, {
           contentType: 'video/mp4',
           upsert: false
         });
 
       if (error) {
-        console.error('Upload error:', error);
-        return null;
+        throw new Error(`Upload failed: ${error.message}`);
       }
 
       // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('videos')
-        .getPublicUrl(filename);
+        .getPublicUrl(data.path);
 
-      return publicUrl;
+      return {
+        success: true,
+        videoUrl: publicUrl,
+        fileSize: bytes.length
+      };
+
     } catch (error) {
-      console.error('Video upload failed:', error);
-      return null;
+      console.error('❌ [AnalysisService] Upload failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Upload failed'
+      };
+    }
+  }
+
+  // Upload video to Supabase storage (direct upload)
+  static async uploadVideo(videoUri: string, userId: string): Promise<{
+    success: boolean;
+    videoUrl?: string;
+    error?: string;
+  }> {
+    try {
+      console.log('🎬 [AnalysisService] Starting direct video upload...');
+      console.log(`📁 [AnalysisService] Video URI: ${videoUri.substring(0, 50)}...`);
+
+      // Direct upload to Supabase (simple implementation)
+      const uploadResult = await AnalysisService.uploadVideoToSupabase(videoUri, userId);
+
+      if (!uploadResult.success || !uploadResult.videoUrl) {
+        return {
+          success: false,
+          error: uploadResult.error || 'Upload failed'
+        };
+      }
+
+      console.log(`✅ [AnalysisService] Video uploaded: ${((uploadResult.fileSize || 0) / (1024 * 1024)).toFixed(2)}MB`);
+
+      return {
+        success: true,
+        videoUrl: uploadResult.videoUrl
+      };
+
+    } catch (error) {
+      console.error('❌ [AnalysisService] Video upload process failed:', error);
+      return {
+        success: false,
+        error: `Upload process failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
     }
   }
 
@@ -100,21 +165,27 @@ export class AnalysisService {
     }
   }
 
-  // Complete analysis workflow
-  static async analyzeVideo({ videoUri, userId, golfLevel }: VideoAnalysisRequest): Promise<AnalysisResult | null> {
+  // Complete analysis workflow with compression
+  static async analyzeVideo({ videoUri, userId }: VideoAnalysisRequest): Promise<AnalysisResult | null> {
     try {
-      // Step 1: Upload video
-      const videoUrl = await this.uploadVideo(videoUri, userId);
-      if (!videoUrl) {
+      console.log('🎬 Starting video analysis workflow...');
+
+      // Step 1: Upload video with robust compression
+      const uploadResult = await this.uploadVideo(videoUri, userId);
+
+      if (!uploadResult.success || !uploadResult.videoUrl) {
+        console.error('❌ [AnalysisService] Video upload failed:', uploadResult.error);
         return {
           id: '',
           status: 'failed',
-          error: 'Échec de l\'upload de la vidéo'
+          error: `Upload failed: ${uploadResult.error}`
         };
       }
 
+      console.log('✅ Video uploaded successfully');
+
       // Step 2: Create analysis record
-      const analysisId = await this.createAnalysis(videoUrl, userId);
+      const analysisId = await this.createAnalysis(uploadResult.videoUrl, userId);
       if (!analysisId) {
         return {
           id: '',
@@ -123,8 +194,10 @@ export class AnalysisService {
         };
       }
 
+      console.log('✅ Analysis record created:', analysisId);
+
       // Step 3: Trigger analysis
-      const triggered = await this.triggerAnalysis(analysisId, videoUrl);
+      const triggered = await this.triggerAnalysis(analysisId, uploadResult.videoUrl);
       if (!triggered) {
         return {
           id: analysisId,
@@ -133,16 +206,18 @@ export class AnalysisService {
         };
       }
 
+      console.log('✅ Analysis triggered successfully');
+
       return {
         id: analysisId,
         status: 'processing'
       };
     } catch (error) {
-      console.error('Analysis workflow failed:', error);
+      console.error('❌ Analysis workflow failed:', error);
       return {
         id: '',
         status: 'failed',
-        error: 'Erreur inattendue lors de l\'analyse'
+        error: `Analyse échouée: ${error instanceof Error ? error.message : 'Erreur inattendue'}`
       };
     }
   }
@@ -250,7 +325,7 @@ export class MobileAnalysisService {
         try {
           const geminiData = JSON.parse(data.gemini_response);
           const swingData = data.swing_data || {};
-          
+
           parsedAnalysis = {
             ...data,
             // New structure from GolfAnalysisResult

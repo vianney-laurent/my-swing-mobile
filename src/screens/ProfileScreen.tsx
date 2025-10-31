@@ -19,6 +19,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
 import LegalModal from '../components/legal/LegalModal';
+import SettingsModal from '../components/settings/SettingsModal';
 import { ShimmerStatCard, ShimmerProfileField } from '../components/ui/ShimmerEffect';
 
 interface UserStats {
@@ -46,6 +47,7 @@ export default function ProfileScreen({ onNavigateToHelp }: ProfileScreenProps) 
     visible: false,
     type: null
   });
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [editForm, setEditForm] = useState<ProfileFormData>({
     first_name: '',
     last_name: '',
@@ -374,8 +376,16 @@ export default function ProfileScreen({ onNavigateToHelp }: ProfileScreenProps) 
           </TouchableOpacity>
         </View>
 
-        {/* Sign Out Button */}
+        {/* Actions */}
         <View style={styles.actionsContainer}>
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => setSettingsModalVisible(true)}
+          >
+            <Ionicons name="settings" size={20} color="#3b82f6" />
+            <Text style={styles.settingsText}>Paramètres</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity 
             style={styles.signOutButton}
             onPress={handleSignOut}
@@ -470,6 +480,12 @@ export default function ProfileScreen({ onNavigateToHelp }: ProfileScreenProps) 
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        visible={settingsModalVisible}
+        onClose={() => setSettingsModalVisible(false)}
+      />
 
       {/* Legal Modal */}
       <LegalModal
@@ -631,6 +647,23 @@ styles = StyleSheet.create({
   },
   actionsContainer: {
     padding: 20,
+    gap: 12,
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
+  },
+  settingsText: {
+    color: '#3b82f6',
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 8,
   },
   signOutButton: {
     flexDirection: 'row',

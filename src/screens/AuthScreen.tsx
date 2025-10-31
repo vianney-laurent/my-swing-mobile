@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase/client';
 import { AuthService } from '../lib/auth/auth-service';
+import SignupForm from '../components/auth/SignupForm';
 
 interface AuthScreenProps {
   onAuthSuccess: (user: any) => void;
@@ -54,22 +55,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     try {
       setLoading(true);
       
-      if (isSignUp) {
-        const result = await AuthService.signUp({
-          email: email.trim(),
-          password: password,
-        });
-        
-        if (result.error) {
-          Alert.alert('Erreur d\'inscription', AuthService.formatAuthError(result.error));
-        } else if (result.user) {
-          Alert.alert(
-            'Inscription réussie', 
-            'Vérifiez votre email pour confirmer votre compte'
-          );
-          setIsSignUp(false);
-        }
-      } else {
+      // Mode connexion seulement
+      {
         const result = await AuthService.signIn({
           email: email.trim(),
           password: password,
@@ -241,7 +228,23 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     );
   }
 
-  // Écran principal de connexion/inscription
+  // Écran d'inscription
+  if (isSignUp) {
+    return (
+      <SignupForm
+        onSuccess={() => {
+          setIsSignUp(false);
+          Alert.alert(
+            'Inscription réussie !',
+            'Vérifiez votre email pour confirmer votre compte, puis connectez-vous.'
+          );
+        }}
+        onBackToSignIn={() => setIsSignUp(false)}
+      />
+    );
+  }
+
+  // Écran principal de connexion
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
@@ -259,7 +262,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             </View>
             <Text style={styles.title}>My Swing</Text>
             <Text style={styles.subtitle}>
-              {isSignUp ? 'Créez votre compte' : 'Connectez-vous à votre compte'}
+              Connectez-vous à votre compte
             </Text>
           </View>
 
@@ -324,21 +327,18 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               disabled={loading}
             >
               <Text style={styles.authButtonText}>
-                {loading 
-                  ? (isSignUp ? 'Inscription...' : 'Connexion...') 
-                  : (isSignUp ? 'S\'inscrire' : 'Se connecter')
-                }
+                {loading ? 'Connexion...' : 'Se connecter'}
               </Text>
             </TouchableOpacity>
 
             {/* Toggle Auth Mode */}
             <View style={styles.toggleContainer}>
               <Text style={styles.toggleText}>
-                {isSignUp ? 'Déjà un compte ?' : 'Pas encore de compte ?'}
+                Pas encore de compte ?
               </Text>
-              <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)}>
+              <TouchableOpacity onPress={() => setIsSignUp(true)}>
                 <Text style={styles.toggleLink}>
-                  {isSignUp ? 'Se connecter' : 'S\'inscrire'}
+                  S'inscrire
                 </Text>
               </TouchableOpacity>
             </View>
