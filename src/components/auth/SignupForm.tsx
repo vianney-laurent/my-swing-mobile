@@ -89,7 +89,16 @@ export default function SignupForm({ onSuccess, onBackToSignIn }: SignupFormProp
     }
 
     if (formData.golf_index) {
-      const index = parseFloat(formData.golf_index);
+      // Normalisation du handicap : virgule → point et suppression des espaces
+      const normalizedIndex = formData.golf_index.replace(',', '.').trim();
+      const index = parseFloat(normalizedIndex);
+      
+      console.log('🏌️ Handicap normalisé:', { 
+        original: formData.golf_index, 
+        normalized: normalizedIndex, 
+        parsed: index 
+      });
+      
       if (isNaN(index) || index < 0 || index > 54) {
         return 'L\'index doit être un nombre entre 0 et 54';
       }
@@ -121,10 +130,13 @@ export default function SignupForm({ onSuccess, onBackToSignIn }: SignupFormProp
     try {
       console.log('🚀 Starting signup process...');
       
-      // 1. Créer le compte utilisateur
+      // 1. Créer le compte utilisateur sans confirmation email
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email.trim(),
         password: formData.password,
+        options: {
+          emailRedirectTo: undefined, // Pas de redirection email
+        }
       });
 
       if (authError) {
@@ -139,16 +151,22 @@ export default function SignupForm({ onSuccess, onBackToSignIn }: SignupFormProp
 
       console.log('✅ User created successfully:', authData.user.id);
 
-      // 2. Préparer les données du profil
+      // 2. Préparer les données du profil avec normalisation du handicap
+      const normalizedGolfIndex = formData.golf_index 
+        ? parseFloat(formData.golf_index.replace(',', '.').trim())
+        : null;
+      
       const profileData = {
         id: authData.user.id,
         email: formData.email.trim(),
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
-        golf_index: formData.golf_index ? parseFloat(formData.golf_index) : null,
+        golf_index: normalizedGolfIndex,
         dominant_hand: formData.dominant_hand === 'none' ? null : formData.dominant_hand,
         city: formData.city.trim()
       };
+      
+      console.log('📝 Données du profil préparées:', profileData);
 
       // 3. Valider les données du profil
       const validation = SignupProfileService.validateProfileData(profileData);
@@ -161,42 +179,41 @@ export default function SignupForm({ onSuccess, onBackToSignIn }: SignupFormProp
       console.log('⏳ Waiting for trigger to create base profile...');
       await SignupProfileService.waitForTriggerProfile(authData.user.id, 5000);
 
-      // 5. Attendre que l'utilisateur soit confirmé et connecté
-      console.log('⏳ Waiting for user session...');
+      // 5. Créer le profil immédiatement (pas besoin d'attendre la confirmation email)
+      console.log('✅ User created, creating profile immediately...');
       
-      // Vérifier si l'utilisateur a une session active
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session && session.user) {
-        console.log('✅ User session found, creating profile...');
-        
-        // 6. Créer le profil complet avec le service spécialisé
-        const profileResult = await SignupProfileService.createSignupProfile(profileData);
+      // 6. Créer le profil complet avec le service spécialisé
+      const profileResult = await SignupProfileService.createSignupProfile(profileData);
 
-        if (!profileResult.success) {
-          console.error('❌ Profile creation failed:', profileResult.error);
-          console.log('⚠️ Profile will need to be completed later');
-        } else {
-          console.log('✅ Profile created successfully:', profileResult.data);
-        }
-      } else {
-        console.log('⚠️ No active session, saving profile for later completion');
-        
-        // Sauvegarder les données du profil pour les utiliser lors de la première connexion
+      if (!profileResult.success) {
+        console.error('❌ Profile creation failed:', profileResult.error);
+        // Sauvegarder pour plus tard en cas d'échec
         const saved = await PendingProfileService.savePendingProfile(authData.user.id, profileData);
-        
         if (saved) {
           console.log('💾 Profile data saved for completion on first login');
-        } else {
-          console.error('❌ Failed to save pending profile data');
         }
+      } else {
+        console.log('✅ Profile created successfully:', profileResult.data);
       }
 
-      Alert.alert(
-        'Inscription réussie !',
-        'Vérifiez votre email pour confirmer votre compte, puis connectez-vous.',
-        [{ text: 'OK', onPress: onSuccess }]
-      );
+      // 7. Connecter automatiquement l'utilisateur
+      console.log('🔐 Attempting automatic sign in...');
+      
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email.trim(),
+        password: formData.password,
+      });
+
+      if (signInError) {
+        console.error('❌ Auto sign-in failed:', signInError);
+        console.log('⚠️ User will need to sign in manually');
+      } else {
+        console.log('✅ User automatically signed in:', signInData.user?.id);
+      }
+      
+      // Rediriger directement vers l'app (pas de pop-up)
+      console.log('🏠 Redirecting to app...');
+      onSuccess();
 
     } catch (error) {
       console.error('❌ Signup error:', error);

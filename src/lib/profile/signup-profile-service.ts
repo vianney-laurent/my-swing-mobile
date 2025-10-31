@@ -69,6 +69,8 @@ export class SignupProfileService {
    */
   private static async tryUpsert(profileData: SignupProfileData) {
     try {
+      console.log('📝 Tentative UPSERT avec données:', profileData);
+      
       const { data, error } = await supabase
         .from('profiles')
         .upsert(profileData, { onConflict: 'id' })
@@ -76,13 +78,29 @@ export class SignupProfileService {
         .single();
 
       if (error) {
-        console.log('UPSERT error:', error);
+        console.log('❌ UPSERT error:', error);
+        console.log('❌ Error details:', JSON.stringify(error, null, 2));
         return { success: false, error: error.message };
+      }
+
+      console.log('✅ UPSERT success:', data);
+      
+      // Vérification que toutes les données sont bien sauvegardées
+      const missingFields = [];
+      if (!data.first_name) missingFields.push('first_name');
+      if (!data.last_name) missingFields.push('last_name');
+      if (!data.city) missingFields.push('city');
+      if (profileData.golf_index && (data.golf_index === null || data.golf_index === undefined)) {
+        missingFields.push('golf_index');
+      }
+      
+      if (missingFields.length > 0) {
+        console.warn('⚠️ Certains champs n\'ont pas été sauvegardés via UPSERT:', missingFields);
       }
 
       return { success: true, data };
     } catch (error) {
-      console.log('UPSERT exception:', error);
+      console.log('❌ UPSERT exception:', error);
       return { success: false, error: 'UPSERT failed' };
     }
   }
@@ -94,6 +112,8 @@ export class SignupProfileService {
     try {
       const { id, ...updateData } = profileData;
       
+      console.log('📝 Tentative UPDATE avec données:', { id, updateData });
+      
       const { data, error } = await supabase
         .from('profiles')
         .update(updateData)
@@ -102,13 +122,29 @@ export class SignupProfileService {
         .single();
 
       if (error) {
-        console.log('UPDATE error:', error);
+        console.log('❌ UPDATE error:', error);
+        console.log('❌ Error details:', JSON.stringify(error, null, 2));
         return { success: false, error: error.message };
+      }
+
+      console.log('✅ UPDATE success:', data);
+      
+      // Vérification que toutes les données sont bien sauvegardées
+      const missingFields = [];
+      if (!data.first_name) missingFields.push('first_name');
+      if (!data.last_name) missingFields.push('last_name');
+      if (!data.city) missingFields.push('city');
+      if (profileData.golf_index && (data.golf_index === null || data.golf_index === undefined)) {
+        missingFields.push('golf_index');
+      }
+      
+      if (missingFields.length > 0) {
+        console.warn('⚠️ Certains champs n\'ont pas été sauvegardés via UPDATE:', missingFields);
       }
 
       return { success: true, data };
     } catch (error) {
-      console.log('UPDATE exception:', error);
+      console.log('❌ UPDATE exception:', error);
       return { success: false, error: 'UPDATE failed' };
     }
   }
@@ -118,6 +154,8 @@ export class SignupProfileService {
    */
   private static async tryInsert(profileData: SignupProfileData) {
     try {
+      console.log('📝 Tentative INSERT avec données:', profileData);
+      
       const { data, error } = await supabase
         .from('profiles')
         .insert(profileData)
@@ -125,13 +163,29 @@ export class SignupProfileService {
         .single();
 
       if (error) {
-        console.log('INSERT error:', error);
+        console.log('❌ INSERT error:', error);
+        console.log('❌ Error details:', JSON.stringify(error, null, 2));
         return { success: false, error: error.message };
+      }
+
+      console.log('✅ INSERT success:', data);
+      
+      // Vérification que toutes les données sont bien sauvegardées
+      const missingFields = [];
+      if (!data.first_name) missingFields.push('first_name');
+      if (!data.last_name) missingFields.push('last_name');
+      if (!data.city) missingFields.push('city');
+      if (profileData.golf_index && (data.golf_index === null || data.golf_index === undefined)) {
+        missingFields.push('golf_index');
+      }
+      
+      if (missingFields.length > 0) {
+        console.warn('⚠️ Certains champs n\'ont pas été sauvegardés via INSERT:', missingFields);
       }
 
       return { success: true, data };
     } catch (error) {
-      console.log('INSERT exception:', error);
+      console.log('❌ INSERT exception:', error);
       return { success: false, error: 'INSERT failed' };
     }
   }
