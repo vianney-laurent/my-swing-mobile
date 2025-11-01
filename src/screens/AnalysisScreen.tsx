@@ -11,8 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import CameraScreen from './CameraScreen';
-import { mobileAnalysisService, AnalysisProgress } from '../lib/analysis/mobile-analysis-service';
-import AnalysisProgressModal from '../components/analysis/AnalysisProgressModal';
+import { UnifiedAnalysisService } from '../lib/analysis/unified-analysis-service';
+import { VideoValidator } from '../lib/video/video-validator-unified';
+import { AnalysisJobTracker } from '../components/analysis/AnalysisJobTracker';
 import SwingContextForm from '../components/analysis/SwingContextForm';
 import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
 
@@ -25,11 +26,8 @@ type ScreenMode = 'selection' | 'camera' | 'context' | 'analyzing';
 export default function AnalysisScreen({ navigation }: AnalysisScreenProps) {
   const [mode, setMode] = useState<ScreenMode>('selection');
   const [selectedVideoUri, setSelectedVideoUri] = useState<string>('');
-  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress>({
-    step: 'uploading',
-    progress: 0,
-    message: 'Initialisation...'
-  });
+  const [currentJobId, setCurrentJobId] = useState<string>('');
+  const [swingContext, setSwingContext] = useState<any>(null);
   const { containerPaddingBottom } = useSafeBottomPadding();
 
   const handlePickVideo = async () => {
@@ -45,21 +43,44 @@ export default function AnalysisScreen({ navigation }: AnalysisScreenProps) {
         return;
       }
 
-      // Ouvrir la galerie
+      // Ouvrir la galerie avec paramètres optimisés
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'videos', // Utiliser string au lieu de enum
-        allowsEditing: true,
-        quality: 1,
-        videoMaxDuration: 60, // 60 secondes max
+        mediaTypes: 'videos',
+        allowsEditing: true, // Permettre découpage
+        quality: 0.8, // Qualité raisonnable
+        videoMaxDuration: 30, // Limite initiale raisonnable
       });
 
       if (!result.canceled && result.assets[0]) {
         const videoUri = result.assets[0].uri;
         console.log('Video selected:', videoUri);
-        setSelectedVideoUri(videoUri);
         
-        // Passer directement au contexte du swing
-        setMode('context');
+        // Validation basique de la vidéo de galerie
+        try {
+          const validation = await VideoValidator.validateGalleryVideo(videoUri);
+          
+          // Avec le nouveau workflow, on peut gérer toutes les tailles
+          // On vérifie juste les erreurs critiques
+          const criticalErrors = validation.issues.filter(issue => issue.severity === 'error');
+          
+          if (criticalErrors.length > 0) {
+            Alert.alert(
+              'Vidéo invalide',
+              criticalErrors[0].message,
+              [
+                { text: 'Choisir une autre', onPress: () => handlePickVideo() }
+              ]
+            );
+            return;
+          }
+          
+          // Continuer directement sans alerte de compression
+          proceedWithVideo(videoUri);
+          
+        } catch (validationError) {
+          console.error('❌ Gallery video validation failed:', validationError);
+          Alert.alert('Erreur', 'Impossible de valider la vidéo sélectionnée');
+        }
       }
     } catch (error) {
       console.error('Error picking video:', error);
@@ -67,40 +88,69 @@ export default function AnalysisScreen({ navigation }: AnalysisScreenProps) {
     }
   };
 
-  const handleContextSelected = async (context: { club: string; angle: 'face' | 'profile' }) => {
+  const proceedWithVideo = (videoUri: string) => {
+    setSelectedVideoUri(videoUri);
+    setMode('context');
+  };
+
+  const handleContextSelected = async (context: { club: string; angle: 'face-on' | 'down-the-line' }) => {
+    setSwingContext(context);
     await startAnalysis(context);
   };
 
   const handleSkipContext = async () => {
-    await startAnalysis();
+    const defaultContext = {
+      club: 'Driver',
+      angle: 'face-on' as const
+    };
+    setSwingContext(defaultContext);
+    await startAnalysis(defaultContext);
   };
 
-  const startAnalysis = async (context?: { club: string; angle: 'face' | 'profile' }) => {
+  const startAnalysis = async (context: { club: string; angle: 'face-on' | 'down-the-line' }) => {
     setMode('analyzing');
     
     try {
-      console.log('🎯 Starting video analysis for selected video...');
+      console.log('🎯 Starting new unified analysis workflow...');
       console.log('📋 Analysis context:', context);
       
-      const result = await mobileAnalysisService.analyzeGolfSwing(
-        {
-          videoUri: selectedVideoUri,
-          userLevel: 'intermediate', // TODO: Get from user profile
-          focusAreas: [],
-          context
+      // Get video metadata
+      const videoInfo = await VideoValidator.getVideoInfo(selectedVideoUri);
+      
+      const result = await UnifiedAnalysisService.analyzeVideo({
+        videoUri: selectedVideoUri,
+        context: {
+          club: context.club,
+          shotType: context.club.toLowerCase().includes('driver') ? 'driver' : 'iron',
+          angle: context.angle,
+          focusArea: 'General analysis'
         },
-        (progress) => {
-          setAnalysisProgress(progress);
+        captureMetadata: {
+          fps: videoInfo.fps,
+          resolution: `${videoInfo.width}x${videoInfo.height}`,
+          duration: videoInfo.duration,
+          fileSize: videoInfo.size,
+          club: context.club,
+          angle: context.angle
         }
-      );
+      });
       
-      console.log('✅ Analysis completed:', result.analysisId);
+      if (!result.success) {
+        throw new Error(result.error || 'Analysis failed');
+      }
       
-      // Naviguer vers les résultats
-      if (navigation) {
-        navigation.navigate('AnalysisResult', { 
-          analysisId: result.analysisId 
-        });
+      console.log('✅ Analysis job submitted:', result.jobId);
+      
+      if (result.isSync && result.analysisId) {
+        // Synchronous completion - go directly to results
+        if (navigation) {
+          navigation.navigate('AnalysisResult', { 
+            analysisId: result.analysisId 
+          });
+        }
+      } else if (result.jobId) {
+        // Asynchronous processing - track job
+        setCurrentJobId(result.jobId);
       }
       
     } catch (error) {
@@ -114,6 +164,27 @@ export default function AnalysisScreen({ navigation }: AnalysisScreenProps) {
         ]
       );
     }
+  };
+
+  const handleJobCompleted = (analysisId: string) => {
+    console.log('✅ Analysis job completed:', analysisId);
+    if (navigation) {
+      navigation.navigate('AnalysisResult', { 
+        analysisId: analysisId 
+      });
+    }
+  };
+
+  const handleJobError = (error: string) => {
+    console.error('❌ Analysis job failed:', error);
+    Alert.alert(
+      'Erreur d\'analyse',
+      error,
+      [
+        { text: 'Réessayer', onPress: () => setMode('context') },
+        { text: 'Retour', onPress: () => setMode('selection') }
+      ]
+    );
   };
 
   if (mode === 'camera') {
@@ -133,17 +204,29 @@ export default function AnalysisScreen({ navigation }: AnalysisScreenProps) {
 
   if (mode === 'analyzing') {
     return (
-      <>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.analyzingContainer}>
-            <Text style={styles.analyzingText}>Analyse en cours...</Text>
-          </View>
-        </SafeAreaView>
-        <AnalysisProgressModal
-          visible={true}
-          progress={analysisProgress}
-        />
-      </>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.analyzingContainer}>
+          <Text style={styles.analyzingTitle}>Analyse en cours</Text>
+          <Text style={styles.analyzingSubtitle}>
+            Votre swing est en cours d'analyse par notre IA
+          </Text>
+          
+          {currentJobId && (
+            <AnalysisJobTracker
+              jobId={currentJobId}
+              onCompleted={handleJobCompleted}
+              onError={handleJobError}
+            />
+          )}
+          
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => setMode('selection')}
+          >
+            <Text style={styles.cancelButtonText}>Annuler</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -296,11 +379,33 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
-  analyzingText: {
-    fontSize: 18,
-    fontWeight: '600',
+  analyzingTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#1e293b',
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  analyzingSubtitle: {
+    fontSize: 16,
+    color: '#64748b',
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  cancelButton: {
+    marginTop: 32,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: '#64748b',
+    fontWeight: '500',
   },
 });

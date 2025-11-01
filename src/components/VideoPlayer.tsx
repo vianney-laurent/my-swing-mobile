@@ -52,15 +52,33 @@ export default function VideoPlayer({
       
       console.log('🎥 [VideoPlayer] Loading video:', videoUrl);
       
+      // Vérifier d'abord si l'URL est valide
+      if (!videoUrl || videoUrl.trim() === '') {
+        throw new Error('URL vidéo vide ou invalide');
+      }
+      
       // Obtenir la meilleure URL vidéo disponible
       const bestUrl = await mobileVideoService.getBestVideoUrl(videoUrl);
       setProcessedVideoUrl(bestUrl);
       
-      console.log('✅ [VideoPlayer] Video URL ready');
+      console.log('✅ [VideoPlayer] Video URL ready:', bestUrl.substring(0, 100) + '...');
       
     } catch (err) {
       console.error('❌ [VideoPlayer] Error loading video:', err);
-      setError('Impossible de charger la vidéo');
+      
+      // Messages d'erreur plus spécifiques
+      let errorMessage = 'Impossible de charger la vidéo';
+      if (err instanceof Error) {
+        if (err.message.includes('URL vidéo vide')) {
+          errorMessage = 'URL vidéo manquante';
+        } else if (err.message.includes('network')) {
+          errorMessage = 'Problème de connexion réseau';
+        } else if (err.message.includes('timeout')) {
+          errorMessage = 'Délai d\'attente dépassé';
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -276,7 +294,22 @@ export default function VideoPlayer({
             onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
             onError={(error) => {
               console.error('Video playback error:', error);
-              setError('Erreur lors de la lecture de la vidéo');
+              console.error('Error details:', JSON.stringify(error, null, 2));
+              console.error('Video URL that failed:', processedVideoUrl);
+              
+              // More specific error messages based on error code
+              let errorMessage = 'Erreur lors de la lecture de la vidéo';
+              if (error && typeof error === 'object') {
+                if ('code' in error && error.code === -1008) {
+                  errorMessage = 'Vidéo non accessible - Vérifiez votre connexion internet';
+                } else if ('code' in error && error.code === -1009) {
+                  errorMessage = 'Pas de connexion internet';
+                } else if ('code' in error) {
+                  errorMessage = `Erreur de lecture (Code: ${error.code})`;
+                }
+              }
+              
+              setError(errorMessage);
             }}
           />
 

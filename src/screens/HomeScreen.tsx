@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
-import { mobileAnalysisService } from '../lib/analysis/analysis-service';
+import { UnifiedAnalysisService } from '../lib/analysis/unified-analysis-service';
 import { MobileProfileService, UserProfile } from '../lib/profile/mobile-profile-service';
 import { MobileWeatherService } from '../lib/weather/mobile-weather-service';
 import WeatherCard from '../components/WeatherCard';
@@ -72,7 +72,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       setLoading(true);
       console.log('📊 Loading analysis stats...');
       
-      const analyses = await mobileAnalysisService.getUserAnalyses(50);
+      const analyses = await UnifiedAnalysisService.getUserAnalyses(50);
       console.log(`📊 Loaded ${analyses.length} analyses`);
       
       const totalAnalyses = analyses.length;

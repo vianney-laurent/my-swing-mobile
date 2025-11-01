@@ -7,7 +7,21 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AnalysisProgress } from '../../lib/analysis/mobile-analysis-service';
+// AnalysisProgress type moved to analysis-job-service
+export interface AnalysisProgress {
+  stage: 'uploading' | 'processing' | 'analyzing' | 'completed';
+  progress: number;
+  message: string;
+  step?: string;
+  details?: {
+    uploadProgress?: number;
+    processingStage?: string;
+    analysisPhase?: string;
+    videoSize?: number;
+    compressionRatio?: number;
+    source?: string;
+  };
+}
 
 interface AnalysisProgressModalProps {
   visible: boolean;
@@ -32,18 +46,20 @@ export default function AnalysisProgressModal({ visible, progress }: AnalysisPro
 
   const getStepOrder = (step: string): number => {
     const order = {
-      'uploading': 1,
-      'processing': 2,
-      'analyzing': 3,
-      'saving': 4,
-      'completed': 5
+      'validating': 1,
+      'compressing': 2,
+      'processing': 3,
+      'analyzing': 4,
+      'saving': 5,
+      'completed': 6
     };
     return order[step as keyof typeof order] || 0;
   };
 
   const getStepLabel = (step: string): string => {
     const labels = {
-      'uploading': 'Préparation',
+      'validating': 'Validation',
+      'compressing': 'Compression',
       'processing': 'Traitement',
       'analyzing': 'Analyse IA',
       'saving': 'Sauvegarde',
@@ -52,7 +68,7 @@ export default function AnalysisProgressModal({ visible, progress }: AnalysisPro
     return labels[step as keyof typeof labels] || step;
   };
 
-  const steps = ['uploading', 'processing', 'analyzing', 'saving', 'completed'];
+  const steps = ['validating', 'compressing', 'processing', 'analyzing', 'saving', 'completed'];
 
   return (
     <Modal
@@ -121,6 +137,25 @@ export default function AnalysisProgressModal({ visible, progress }: AnalysisPro
           {/* Current Message */}
           <View style={styles.messageContainer}>
             <Text style={styles.currentMessage}>{progress.message}</Text>
+            {progress.details && (
+              <View style={styles.detailsContainer}>
+                {progress.details.videoSize && (
+                  <Text style={styles.detailText}>
+                    Taille: {progress.details.videoSize.toFixed(1)}MB
+                  </Text>
+                )}
+                {progress.details.compressionRatio && (
+                  <Text style={styles.detailText}>
+                    Compression: {(progress.details.compressionRatio * 100).toFixed(0)}%
+                  </Text>
+                )}
+                {progress.details.source && (
+                  <Text style={styles.detailText}>
+                    Source: {progress.details.source === 'camera_recorded' ? 'Caméra' : 'Galerie'}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -246,5 +281,20 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontWeight: '500',
     textAlign: 'center',
+  },
+  detailsContainer: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  detailText: {
+    fontSize: 12,
+    color: '#64748b',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
 });

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { mobileAnalysisService } from '../lib/analysis/analysis-service';
+import { UnifiedAnalysisService } from '../lib/analysis/unified-analysis-service';
 import { Analysis } from '../types/profile';
 // formatDistanceToNow et fr sont maintenant utilisés dans EnhancedAnalysisCard
 import { ShimmerStatCard, ShimmerAnalysisCard } from '../components/ui/ShimmerEffect';
@@ -47,7 +47,7 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
       console.log('🔄 [HistoryScreen] Loading analyses...');
       
       // Récupérer les vraies analyses depuis Supabase
-      const data = await mobileAnalysisService.getUserAnalyses(20);
+      const data = await UnifiedAnalysisService.getUserAnalyses(20);
       setAnalyses(data);
       
       console.log(`✅ [HistoryScreen] Loaded ${data.length} analyses`);
