@@ -16,6 +16,7 @@ import { VideoValidator } from '../lib/video/video-validator-unified';
 import { AnalysisJobTracker } from '../components/analysis/AnalysisJobTracker';
 import SwingContextForm from '../components/analysis/SwingContextForm';
 import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
+import { useAnalysisNavigation } from '../hooks/useAnalysisNavigation';
 
 interface AnalysisScreenProps {
   navigation?: any;
@@ -29,6 +30,7 @@ export default function AnalysisScreen({ navigation }: AnalysisScreenProps) {
   const [currentJobId, setCurrentJobId] = useState<string>('');
   const [swingContext, setSwingContext] = useState<any>(null);
   const { containerPaddingBottom } = useSafeBottomPadding();
+  const { navigateToAnalysisResult } = useAnalysisNavigation();
 
   const handlePickVideo = async () => {
     try {
@@ -142,12 +144,8 @@ export default function AnalysisScreen({ navigation }: AnalysisScreenProps) {
       console.log('✅ Analysis job submitted:', result.jobId);
       
       if (result.isSync && result.analysisId) {
-        // Synchronous completion - go directly to results
-        if (navigation) {
-          navigation.navigate('AnalysisResult', { 
-            analysisId: result.analysisId 
-          });
-        }
+        // Synchronous completion - invalidate cache and go to results
+        await navigateToAnalysisResult(navigation, result.analysisId, 'camera');
       } else if (result.jobId) {
         // Asynchronous processing - track job
         setCurrentJobId(result.jobId);
@@ -166,13 +164,9 @@ export default function AnalysisScreen({ navigation }: AnalysisScreenProps) {
     }
   };
 
-  const handleJobCompleted = (analysisId: string) => {
+  const handleJobCompleted = async (analysisId: string) => {
     console.log('✅ Analysis job completed:', analysisId);
-    if (navigation) {
-      navigation.navigate('AnalysisResult', { 
-        analysisId: analysisId 
-      });
-    }
+    await navigateToAnalysisResult(navigation, analysisId, 'camera');
   };
 
   const handleJobError = (error: string) => {
