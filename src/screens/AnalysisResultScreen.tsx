@@ -214,8 +214,8 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
       setIsDeleting(true);
       console.log('🗑️ Deleting analysis:', analysisId);
       
-      // TODO: Implement delete in UnifiedAnalysisService
-      console.log('Delete not implemented yet in unified service');
+      // Delete analysis using UnifiedAnalysisService
+      await UnifiedAnalysisService.deleteAnalysis(analysisId);
       
       console.log('✅ Analysis deleted successfully');
       setShowDeleteModal(false);
@@ -340,7 +340,7 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
         </View>
 
         {/* Section Lecteur Vidéo Amélioré */}
-        {analysisData.videoUrl && (
+        {analysisData.videoUrl ? (
           <View style={styles.videoSection}>
             <EnhancedVideoPlayer
               videoUrl={analysisData.videoUrl}
@@ -351,6 +351,16 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
                 console.log(`Video time: ${currentTime}/${duration}`);
               }}
             />
+          </View>
+        ) : (
+          <View style={styles.videoSection}>
+            <View style={styles.missingVideoContainer}>
+              <Ionicons name="videocam-off" size={48} color="#64748b" />
+              <Text style={styles.missingVideoTitle}>Vidéo non disponible</Text>
+              <Text style={styles.missingVideoText}>
+                La vidéo de cette analyse n'est plus disponible, mais vous pouvez toujours consulter les résultats détaillés ci-dessous.
+              </Text>
+            </View>
           </View>
         )}
 
@@ -837,6 +847,31 @@ const styles = StyleSheet.create({
   // Section vidéo - Suppression des marges pour maximiser l'espace
   videoSection: {
     marginBottom: 16,
+  },
+  missingVideoContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 40,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  missingVideoTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#64748b',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  missingVideoText: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 
   // Sections générales

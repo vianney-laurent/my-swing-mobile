@@ -215,7 +215,13 @@ export class UnifiedAnalysisService {
           .createSignedUrl(videoPath, 3600); // 1 hour expiry
 
         if (signedUrlError) {
-          console.error('❌ [Unified] Supabase error generating signed URL:', signedUrlError);
+          if (signedUrlError.message?.includes('Object not found')) {
+            console.warn('⚠️ [Unified] Video file no longer exists in storage');
+            // Set video_url to null to indicate missing video
+            parsedAnalysis.video_url = null;
+          } else {
+            console.error('❌ [Unified] Supabase error generating signed URL:', signedUrlError);
+          }
         } else if (signedUrlData?.signedUrl) {
           parsedAnalysis.video_url = signedUrlData.signedUrl;
           console.log('✅ [Unified] Generated fresh signed URL for video');
@@ -280,6 +286,88 @@ export class UnifiedAnalysisService {
    */
   static async deleteVideo(videoPath: string): Promise<boolean> {
     return VideoUploadService.deleteVideo(videoPath);
+  }
+
+  /**
+   * Delete analysis and associated video
+   */
+  static async deleteAnalysis(analysisId: string): Promise<boolean> {
+    try {
+      console.log('🗑️ [Unified] Deleting analysis:', analysisId);
+
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get analysis details first to get video path
+      const { data: analysis, error: getError } = await supabase
+        .from('analyses')
+        .select('video_url')
+        .eq('id', analysisId)
+        .eq('user_id', user.id) // Security: only delete own analyses
+        .single();
+
+      if (getError) {
+        console.error('❌ [Unified] Failed to get analysis for deletion:', getError);
+        throw new Error('Analysis not found or access denied');
+      }
+
+      // Extract video path if exists
+      let videoPath = null;
+      if (analysis.video_url) {
+        if (analysis.video_url.includes('sign/')) {
+          // Extract path from signed URL
+          const pathMatch = analysis.video_url.match(/\/storage\/v1\/object\/sign\/videos\/(.+?)\?/);
+          if (pathMatch) {
+            videoPath = pathMatch[1];
+          }
+        } else {
+          // It's already a path
+          videoPath = analysis.video_url;
+        }
+      }
+
+      // Delete video file if exists
+      if (videoPath) {
+        console.log('🗑️ [Unified] Deleting video file:', videoPath);
+        try {
+          const { error: deleteVideoError } = await supabase.storage
+            .from('videos')
+            .remove([videoPath]);
+
+          if (deleteVideoError) {
+            console.warn('⚠️ [Unified] Failed to delete video file:', deleteVideoError);
+            // Continue with analysis deletion even if video deletion fails
+          } else {
+            console.log('✅ [Unified] Video file deleted successfully');
+          }
+        } catch (videoError) {
+          console.warn('⚠️ [Unified] Error deleting video file:', videoError);
+          // Continue with analysis deletion
+        }
+      }
+
+      // Delete analysis from database
+      const { error: deleteError } = await supabase
+        .from('analyses')
+        .delete()
+        .eq('id', analysisId)
+        .eq('user_id', user.id); // Security: only delete own analyses
+
+      if (deleteError) {
+        console.error('❌ [Unified] Failed to delete analysis:', deleteError);
+        throw new Error(`Failed to delete analysis: ${deleteError.message}`);
+      }
+
+      console.log('✅ [Unified] Analysis deleted successfully');
+      return true;
+
+    } catch (error) {
+      console.error('❌ [Unified] Error deleting analysis:', error);
+      throw error;
+    }
   }
 
   /**
