@@ -22,7 +22,7 @@ export const config = {
     version: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0-mobile',
   },
   video: {
-    maxSizeMB: parseInt(process.env.EXPO_PUBLIC_MAX_VIDEO_SIZE_MB || '10'),
+    maxSizeMB: parseInt(process.env.EXPO_PUBLIC_MAX_VIDEO_SIZE_MB || '500'),
     maxDurationSeconds: parseInt(process.env.EXPO_PUBLIC_MAX_VIDEO_DURATION_SECONDS || '30'),
     supportedFormats: ['video/mp4', 'video/mov', 'video/quicktime'],
   },

@@ -2,4 +2,5 @@
  * Index des services d'analyse
  */
 
-export { analysisService, mobileAnalysisService } from './analysis-service';
+export { UnifiedAnalysisService } from './unified-analysis-service';
+export { AnalysisJobService } from './analysis-job-service';

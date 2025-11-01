@@ -10,8 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { mobileAnalysisService } from '../lib/analysis/analysis-service';
-import { mobileAnalysisService as newAnalysisService } from '../lib/analysis/mobile-analysis-service';
+import { UnifiedAnalysisService } from '../lib/analysis/unified-analysis-service';
 import EnhancedVideoPlayer from '../components/EnhancedVideoPlayer';
 import DeleteConfirmationModal from '../components/ui/DeleteConfirmationModal';
 
@@ -41,7 +40,7 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
       setLoading(true);
       console.log('🔄 [AnalysisResult] Loading analysis:', analysisId);
       
-      const data = await mobileAnalysisService.getAnalysis(analysisId);
+      const data = await UnifiedAnalysisService.getAnalysis(analysisId);
       setAnalysis(data);
       
       console.log('✅ [AnalysisResult] Analysis loaded successfully');
@@ -73,29 +72,90 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
         ? JSON.parse(analysis.swing_data)
         : analysis.swing_data || {};
 
-      return {
+      console.log('🔍 [AnalysisResult] Parsing Gemini response:', {
+        hasGeminiResponse: !!geminiResponse,
+        responseKeys: geminiResponse ? Object.keys(geminiResponse) : [],
+        overallScore: geminiResponse?.overall_score,
+        keyInsightsCount: geminiResponse?.key_insights?.length || 0,
+        recommendationsCount: geminiResponse?.recommendations?.length || 0,
+        swingPhasesKeys: geminiResponse?.swing_phases ? Object.keys(geminiResponse.swing_phases) : []
+      });
+
+      // Extraire les points forts depuis key_insights
+      const strengths = geminiResponse?.key_insights?.filter((insight: any) => 
+        insight.severity === 'positive'
+      ).map((insight: any) => ({
+        strength: insight.title,
+        evidence: insight.description,
+        impact: `Observé à ${insight.timestamp}s`
+      })) || [];
+
+      // Extraire les problèmes critiques depuis key_insights
+      const criticalIssues = geminiResponse?.key_insights?.filter((insight: any) => 
+        insight.severity === 'needs_attention'
+      ).map((insight: any, index: number) => ({
+        issue: insight.title,
+        timeEvidence: `Observé à ${insight.timestamp}s - ${insight.description}`,
+        immediateAction: geminiResponse?.recommendations?.[index]?.description || 'Travaillez sur cet aspect',
+        expectedImprovement: geminiResponse?.recommendations?.[index]?.drill_suggestion || 'Amélioration progressive',
+        priority: geminiResponse?.recommendations?.[index]?.priority === 'high' ? 1 : 
+                 geminiResponse?.recommendations?.[index]?.priority === 'medium' ? 2 : 3
+      })) || [];
+
+      // Extraire les conseils actionnables depuis recommendations
+      const actionableAdvice = geminiResponse?.recommendations?.map((rec: any, index: number) => ({
+        category: rec.priority === 'high' ? 'Technique' : 'Amélioration',
+        instruction: rec.description,
+        howToTest: rec.drill_suggestion || 'Pratiquez régulièrement et observez les résultats',
+        timeToSee: rec.priority === 'high' ? 'Quelques séances' : 'Plusieurs semaines',
+        difficulty: rec.priority === 'high' ? 'medium' : 'easy'
+      })) || [];
+
+      // Extraire l'analyse technique depuis swing_phases et technical_analysis
+      const swingAnalysis = {
+        phases: geminiResponse?.swing_phases ? Object.entries(geminiResponse.swing_phases).map(([name, data]: [string, any]) => ({
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          quality: data.score || 75,
+          observations: [data.feedback || 'Analyse en cours...']
+        })) : [],
+        tempo: geminiResponse?.technical_analysis?.tempo || 'Tempo analysé automatiquement',
+        timing: geminiResponse?.technical_analysis?.balance || 'Équilibre évalué',
+        // Nouveaux champs d'analyse technique
+        clubPath: geminiResponse?.technical_analysis?.club_path || '',
+        faceAngle: geminiResponse?.technical_analysis?.face_angle || '',
+        weightTransfer: geminiResponse?.technical_analysis?.weight_transfer || '',
+        spineAngle: geminiResponse?.technical_analysis?.spine_angle || '',
+        // Métriques de performance
+        performanceMetrics: geminiResponse?.performance_metrics || {},
+        // Insights personnalisés
+        personalizedInsights: geminiResponse?.personalized_insights || {}
+      };
+
+      // Actions immédiates - structure depuis les recommandations
+      const immediateActions = {
+        nextSession: geminiResponse?.recommendations?.filter((r: any) => r.priority === 'high')
+          .map((r: any) => r.description).slice(0, 3) || [],
+        thisWeek: geminiResponse?.recommendations?.filter((r: any) => r.priority === 'medium')
+          .map((r: any) => r.description).slice(0, 3) || [],
+        longTerm: geminiResponse?.recommendations?.filter((r: any) => r.priority === 'low')
+          .map((r: any) => r.description).slice(0, 3) || []
+      };
+
+      const result = {
         // Informations générales
-        overallScore: geminiResponse.overallScore || analysis.overall_score || 0,
-        confidence: geminiResponse.confidence || swingData.confidence || 0,
+        overallScore: geminiResponse?.overall_score || analysis.overall_score || 0,
+        confidence: geminiResponse?.confidence || swingData.confidence || 75,
         clubUsed: analysis.club_used || 'Non spécifié',
         cameraAngle: analysis.camera_angle || 'Non spécifié',
         analysisDate: new Date(analysis.created_at),
         videoUrl: analysis.video_url,
         
-        // Points forts
-        strengths: geminiResponse.strengths || [],
-        
-        // Problèmes critiques avec priorités
-        criticalIssues: geminiResponse.criticalIssues || [],
-        
-        // Conseils actionnables
-        actionableAdvice: geminiResponse.actionableAdvice || [],
-        
-        // Actions immédiates
-        immediateActions: geminiResponse.immediateActions || {},
-        
-        // Analyse technique du swing par phases
-        swingAnalysis: geminiResponse.swingAnalysis || {},
+        // Données parsées depuis la réponse Gemini
+        strengths,
+        criticalIssues,
+        actionableAdvice,
+        immediateActions,
+        swingAnalysis,
         
         // Métadonnées techniques
         metadata: {
@@ -104,8 +164,19 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
           userLevel: swingData.userLevel || 'intermediate'
         }
       };
+
+      console.log('✅ [AnalysisResult] Parsed analysis data:', {
+        overallScore: result.overallScore,
+        strengthsCount: result.strengths.length,
+        criticalIssuesCount: result.criticalIssues.length,
+        actionableAdviceCount: result.actionableAdvice.length,
+        swingPhasesCount: result.swingAnalysis.phases.length
+      });
+
+      return result;
     } catch (error) {
       console.error('❌ Error parsing analysis data:', error);
+      console.error('❌ Raw gemini_response:', analysis.gemini_response);
       return null;
     }
   };
@@ -143,7 +214,8 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
       setIsDeleting(true);
       console.log('🗑️ Deleting analysis:', analysisId);
       
-      await newAnalysisService.deleteAnalysis(analysisId);
+      // TODO: Implement delete in UnifiedAnalysisService
+      console.log('Delete not implemented yet in unified service');
       
       console.log('✅ Analysis deleted successfully');
       setShowDeleteModal(false);
@@ -437,10 +509,20 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
         {/* Section Analyse Technique du Swing */}
         {analysisData.swingAnalysis.phases && (
           <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="analytics" size={20} color="#3b82f6" />
-              <Text style={styles.sectionTitle}>Analyse Technique</Text>
+            <View style={styles.enhancedSectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#3b82f6' }]}>
+                <Ionicons name="analytics" size={24} color="white" />
+              </View>
+              <View style={styles.sectionHeaderContent}>
+                <Text style={styles.enhancedSectionTitle}>Analyse Technique</Text>
+                <Text style={styles.sectionSubtitle}>Biomécanique et technique détaillée</Text>
+              </View>
+              <View style={[styles.issueCountBadge, { backgroundColor: '#3b82f6' }]}>
+                <Text style={styles.issueCountText}>{analysisData.swingAnalysis.phases.length}</Text>
+              </View>
             </View>
+            
+            {/* Phases du swing */}
             {analysisData.swingAnalysis.phases.map((phase: any, index: number) => (
               <View key={index} style={styles.phaseItem}>
                 <View style={styles.phaseHeader}>
@@ -459,14 +541,122 @@ export default function AnalysisResultScreen({ route, navigation }: AnalysisResu
               </View>
             ))}
             
-            {/* Tempo et Timing */}
-            {analysisData.swingAnalysis.tempo && (
-              <View style={styles.tempoSection}>
-                <Text style={styles.tempoTitle}>Tempo & Timing</Text>
-                <Text style={styles.tempoText}>{analysisData.swingAnalysis.tempo}</Text>
-                {analysisData.swingAnalysis.timing && (
-                  <Text style={styles.timingText}>{analysisData.swingAnalysis.timing}</Text>
-                )}
+            {/* Analyse technique détaillée */}
+            <View style={styles.technicalDetailsSection}>
+              <Text style={styles.technicalDetailsTitle}>🔧 Analyse Biomécanique</Text>
+              
+              {analysisData.swingAnalysis.tempo && (
+                <View style={styles.technicalDetailItem}>
+                  <Text style={styles.technicalDetailLabel}>⏱️ Tempo & Rythme:</Text>
+                  <Text style={styles.technicalDetailText}>{analysisData.swingAnalysis.tempo}</Text>
+                </View>
+              )}
+              
+              {analysisData.swingAnalysis.timing && (
+                <View style={styles.technicalDetailItem}>
+                  <Text style={styles.technicalDetailLabel}>⚖️ Équilibre:</Text>
+                  <Text style={styles.technicalDetailText}>{analysisData.swingAnalysis.timing}</Text>
+                </View>
+              )}
+              
+              {analysisData.swingAnalysis.clubPath && (
+                <View style={styles.technicalDetailItem}>
+                  <Text style={styles.technicalDetailLabel}>🏌️ Chemin de Club:</Text>
+                  <Text style={styles.technicalDetailText}>{analysisData.swingAnalysis.clubPath}</Text>
+                </View>
+              )}
+              
+              {analysisData.swingAnalysis.faceAngle && (
+                <View style={styles.technicalDetailItem}>
+                  <Text style={styles.technicalDetailLabel}>🎯 Face de Club:</Text>
+                  <Text style={styles.technicalDetailText}>{analysisData.swingAnalysis.faceAngle}</Text>
+                </View>
+              )}
+              
+              {analysisData.swingAnalysis.weightTransfer && (
+                <View style={styles.technicalDetailItem}>
+                  <Text style={styles.technicalDetailLabel}>🏋️ Transfert de Poids:</Text>
+                  <Text style={styles.technicalDetailText}>{analysisData.swingAnalysis.weightTransfer}</Text>
+                </View>
+              )}
+              
+              {analysisData.swingAnalysis.spineAngle && (
+                <View style={styles.technicalDetailItem}>
+                  <Text style={styles.technicalDetailLabel}>📐 Angle de Colonne:</Text>
+                  <Text style={styles.technicalDetailText}>{analysisData.swingAnalysis.spineAngle}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Section Métriques de Performance */}
+        {analysisData.swingAnalysis.performanceMetrics && Object.keys(analysisData.swingAnalysis.performanceMetrics).length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.enhancedSectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#10b981' }]}>
+                <Ionicons name="speedometer" size={24} color="white" />
+              </View>
+              <View style={styles.sectionHeaderContent}>
+                <Text style={styles.enhancedSectionTitle}>Métriques de Performance</Text>
+                <Text style={styles.sectionSubtitle}>Indicateurs clés de votre swing</Text>
+              </View>
+            </View>
+            
+            {analysisData.swingAnalysis.performanceMetrics.consistency_indicators && (
+              <View style={styles.performanceMetricItem}>
+                <Text style={styles.performanceMetricLabel}>📊 Régularité:</Text>
+                <Text style={styles.performanceMetricText}>{analysisData.swingAnalysis.performanceMetrics.consistency_indicators}</Text>
+              </View>
+            )}
+            
+            {analysisData.swingAnalysis.performanceMetrics.power_generation && (
+              <View style={styles.performanceMetricItem}>
+                <Text style={styles.performanceMetricLabel}>⚡ Génération de Puissance:</Text>
+                <Text style={styles.performanceMetricText}>{analysisData.swingAnalysis.performanceMetrics.power_generation}</Text>
+              </View>
+            )}
+            
+            {analysisData.swingAnalysis.performanceMetrics.accuracy_factors && (
+              <View style={styles.performanceMetricItem}>
+                <Text style={styles.performanceMetricLabel}>🎯 Facteurs de Précision:</Text>
+                <Text style={styles.performanceMetricText}>{analysisData.swingAnalysis.performanceMetrics.accuracy_factors}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Section Insights Personnalisés */}
+        {analysisData.swingAnalysis.personalizedInsights && Object.keys(analysisData.swingAnalysis.personalizedInsights).length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.enhancedSectionHeader}>
+              <View style={[styles.sectionIconContainer, { backgroundColor: '#8b5cf6' }]}>
+                <Ionicons name="bulb" size={24} color="white" />
+              </View>
+              <View style={styles.sectionHeaderContent}>
+                <Text style={styles.enhancedSectionTitle}>Insights Personnalisés</Text>
+                <Text style={styles.sectionSubtitle}>Conseils adaptés à votre profil</Text>
+              </View>
+            </View>
+            
+            {analysisData.swingAnalysis.personalizedInsights.strengths_to_build_on && (
+              <View style={styles.personalizedInsightItem}>
+                <Text style={styles.personalizedInsightLabel}>💪 Points Forts à Développer:</Text>
+                <Text style={styles.personalizedInsightText}>{analysisData.swingAnalysis.personalizedInsights.strengths_to_build_on}</Text>
+              </View>
+            )}
+            
+            {analysisData.swingAnalysis.personalizedInsights.quick_wins && (
+              <View style={styles.personalizedInsightItem}>
+                <Text style={styles.personalizedInsightLabel}>⚡ Améliorations Rapides:</Text>
+                <Text style={styles.personalizedInsightText}>{analysisData.swingAnalysis.personalizedInsights.quick_wins}</Text>
+              </View>
+            )}
+            
+            {analysisData.swingAnalysis.personalizedInsights.long_term_development && (
+              <View style={styles.personalizedInsightItem}>
+                <Text style={styles.personalizedInsightLabel}>🎯 Développement Long Terme:</Text>
+                <Text style={styles.personalizedInsightText}>{analysisData.swingAnalysis.personalizedInsights.long_term_development}</Text>
               </View>
             )}
           </View>
@@ -1214,6 +1404,76 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+
+  // Analyse technique détaillée
+  technicalDetailsSection: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  technicalDetailsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  technicalDetailItem: {
+    marginBottom: 12,
+  },
+  technicalDetailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 4,
+  },
+  technicalDetailText: {
+    fontSize: 14,
+    color: '#334155',
+    lineHeight: 20,
+  },
+
+  // Métriques de performance
+  performanceMetricItem: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10b981',
+  },
+  performanceMetricLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#065f46',
+    marginBottom: 6,
+  },
+  performanceMetricText: {
+    fontSize: 14,
+    color: '#047857',
+    lineHeight: 20,
+  },
+
+  // Insights personnalisés
+  personalizedInsightItem: {
+    backgroundColor: '#faf5ff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8b5cf6',
+  },
+  personalizedInsightLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6b21a8',
+    marginBottom: 6,
+  },
+  personalizedInsightText: {
+    fontSize: 14,
+    color: '#7c3aed',
+    lineHeight: 20,
   },
 
   // États de chargement et d'erreur

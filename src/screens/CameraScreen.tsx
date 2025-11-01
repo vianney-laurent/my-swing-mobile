@@ -10,7 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { mobileAnalysisService, AnalysisProgress } from '../lib/analysis/mobile-analysis-service';
+// CameraScreen now uses AnalysisScreen for video analysis
+import { VideoValidator } from '../lib/video/video-validator';
 import AnalysisProgressModal from '../components/analysis/AnalysisProgressModal';
 import SwingContextForm from '../components/analysis/SwingContextForm';
 
@@ -27,10 +28,12 @@ export default function CameraScreen({ onBack, navigation }: CameraScreenProps) 
   const [isRecording, setIsRecording] = useState(false);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [estimatedSize, setEstimatedSize] = useState(0);
+  const [canRecord, setCanRecord] = useState(true);
   const [screenState, setScreenState] = useState<ScreenState>('camera');
   const [recordedVideoUri, setRecordedVideoUri] = useState<string>('');
-  const [analysisProgress, setAnalysisProgress] = useState<AnalysisProgress>({
-    step: 'uploading',
+  const [analysisProgress, setAnalysisProgress] = useState({
+    stage: 'uploading' as const,
     progress: 0,
     message: 'Initialisation...'
   });
@@ -49,6 +52,23 @@ export default function CameraScreen({ onBack, navigation }: CameraScreenProps) 
       return () => clearTimeout(timer);
     }
   }, [permission?.granted, isCameraReady]);
+
+  // Estimation de taille pendant l'enregistrement
+  useEffect(() => {
+    if (isRecording) {
+      const estimated = recordingTime * 0.8; // ~0.8MB par seconde en 720p
+      setEstimatedSize(estimated);
+      setCanRecord(estimated < 10);
+    }
+  }, [recordingTime, isRecording]);
+
+  // Arrêt automatique si approche de 10MB
+  useEffect(() => {
+    if (estimatedSize > 9.5 && isRecording) {
+      console.log('🛑 Auto-stopping recording to prevent oversized video');
+      stopRecording();
+    }
+  }, [estimatedSize, isRecording]);
 
   const startRecording = async () => {
     if (cameraRef.current && !isRecording) {
@@ -69,18 +89,43 @@ export default function CameraScreen({ onBack, navigation }: CameraScreenProps) 
         await new Promise(resolve => setTimeout(resolve, delay));
         
         const video = await cameraRef.current.recordAsync({
-          maxDuration: 15, // 15 seconds max pour limiter la taille
+          maxDuration: 12, // 12 seconds max pour garantir < 10MB
           mirror: false,
         });
         
         if (video) {
           console.log('✅ Video recorded with CameraView:', video.uri);
           console.log('📊 Video info:', video);
-          setRecordedVideoUri(video.uri);
-          retryCountRef.current = 0; // Reset counter on success
           
-          // Passer à l'écran de contexte
-          setScreenState('context');
+          // Validation immédiate de la vidéo enregistrée
+          try {
+            const validation = await VideoValidator.validateRecordedVideo(video.uri);
+            
+            if (!validation.success) {
+              Alert.alert(
+                'Vidéo invalide',
+                validation.issues[0]?.message || 'Problème avec la vidéo enregistrée',
+                [
+                  { text: 'Réessayer', onPress: () => console.log('Retry recording') }
+                ]
+              );
+              return;
+            }
+            
+            if (validation.needsCompression) {
+              console.log('⚠️ Video will need compression:', validation.sizeMB, 'MB');
+            }
+            
+            setRecordedVideoUri(video.uri);
+            retryCountRef.current = 0; // Reset counter on success
+            
+            // Passer à l'écran de contexte
+            setScreenState('context');
+            
+          } catch (validationError) {
+            console.error('❌ Video validation failed:', validationError);
+            Alert.alert('Erreur', 'Impossible de valider la vidéo enregistrée');
+          }
         }
         
         // Arrêter le timer et reset
@@ -120,8 +165,8 @@ export default function CameraScreen({ onBack, navigation }: CameraScreenProps) 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['videos'],
         allowsEditing: false,
-        quality: 0.5, // Réduire la qualité pour limiter la taille
-        videoMaxDuration: 15, // Limiter à 15 secondes pour réduire la taille
+        quality: 0.7, // Qualité optimisée pour 10MB max
+        videoMaxDuration: 12, // Limiter à 12 secondes pour garantir < 10MB
         videoQuality: ImagePicker.UIImagePickerControllerQualityType.Medium,
       });
 
@@ -154,26 +199,13 @@ export default function CameraScreen({ onBack, navigation }: CameraScreenProps) 
     try {
       console.log('🎯 Starting video analysis...');
       
-      const result = await mobileAnalysisService.analyzeGolfSwing(
-        {
-          videoUri: recordedVideoUri,
-          userLevel: 'intermediate', // TODO: Get from user profile
-          focusAreas: [],
-          context
-        },
-        (progress) => {
-          setAnalysisProgress(progress);
-        }
-      );
+      // Redirect to AnalysisScreen for processing
+      navigation.navigate('Analysis', {
+        videoUri: recordedVideoUri,
+        context: context
+      });
       
-      console.log('✅ Analysis completed:', result.analysisId);
-      
-      // Naviguer vers les résultats
-      if (navigation) {
-        navigation.navigate('AnalysisResult', { 
-          analysisId: result.analysisId 
-        });
-      }
+      console.log('✅ Redirected to Analysis screen');
       
     } catch (error) {
       console.error('❌ Analysis failed:', error);

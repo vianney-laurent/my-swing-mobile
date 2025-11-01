@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase/client';
 import { profileService } from '../lib/profile/profile-service';
-import { analysisService } from '../lib/analysis/analysis-service';
+// ProfileScreen no longer needs direct analysis service import
 import { UserProfile, ProfileFormData } from '../types/profile';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
