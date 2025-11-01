@@ -6,71 +6,110 @@ import {
   FlatList,
   RefreshControl,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { UnifiedAnalysisService } from '../lib/analysis/unified-analysis-service';
+import { DataManager, UserStats } from '../lib/cache/data-manager';
 import { Analysis } from '../types/profile';
-// formatDistanceToNow et fr sont maintenant utilisés dans EnhancedAnalysisCard
 import { ShimmerStatCard, ShimmerAnalysisCard } from '../components/ui/ShimmerEffect';
 import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
-import EnhancedAnalysisCard from '../components/history/EnhancedAnalysisCard';
-
-interface UserStats {
-  totalAnalyses: number;
-  averageScore: number;
-  bestScore: number;
-}
+import { useAuth } from '../hooks/useAuth';
+import { useAppData } from '../contexts/AppDataContext';
+import OptimizedAnalysisCard from '../components/history/OptimizedAnalysisCard';
 
 interface HistoryScreenProps {
   navigation: any;
 }
 
 export default function HistoryScreen({ navigation }: HistoryScreenProps) {
+  const { user } = useAuth();
+  const { userStats, refreshAnalyses, isLoadingStats } = useAppData();
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
-  const [stats, setStats] = useState<UserStats>({
-    totalAnalyses: 0,
-    averageScore: 0,
-    bestScore: 0,
-  });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const { containerPaddingBottom } = useSafeBottomPadding();
 
-  useEffect(() => {
-    loadAnalyses();
-  }, []);
+  const INITIAL_LIMIT = 8; // Charger moins d'analyses initialement
+  const LOAD_MORE_LIMIT = 5; // Charger par petits groupes
 
-  const loadAnalyses = async () => {
+  useEffect(() => {
+    if (user) {
+      loadHistoryData();
+    }
+  }, [user]);
+
+  const loadHistoryData = async (forceRefresh = false) => {
     try {
       setLoading(true);
-      console.log('🔄 [HistoryScreen] Loading analyses...');
       
-      // Récupérer les vraies analyses depuis Supabase
-      const data = await UnifiedAnalysisService.getUserAnalyses(20);
-      setAnalyses(data);
-      
-      console.log(`✅ [HistoryScreen] Loaded ${data.length} analyses`);
-      
-      // Calculate stats
-      const totalAnalyses = data.length;
-      const scores = data.filter((a: Analysis) => a.overall_score).map((a: Analysis) => a.overall_score);
-      const averageScore = scores.length > 0 ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0;
-      const bestScore = scores.length > 0 ? Math.max(...scores) : 0;
+      if (!user) return;
 
-      setStats({ totalAnalyses, averageScore, bestScore });
-      console.log('📊 [HistoryScreen] Stats calculated:', { totalAnalyses, averageScore, bestScore });
+      console.log('🔄 [HistoryScreen] Loading history data...');
+      
+      // Chargement optimisé avec cache et pagination
+      const historyData = await DataManager.loadHistoryData(
+        user.id, 
+        INITIAL_LIMIT, 
+        forceRefresh
+      );
+      
+      setAnalyses(historyData.analyses);
+      setHasMore(historyData.hasMore);
+      
+      // Rafraîchir les stats via le contexte si nécessaire
+      if (!userStats) {
+        await refreshAnalyses(forceRefresh);
+      }
+      
+      console.log(`✅ [HistoryScreen] Loaded ${historyData.analyses.length} analyses, hasMore: ${historyData.hasMore}`);
+      
     } catch (error) {
-      console.error('❌ [HistoryScreen] Error loading analyses:', error);
+      console.error('❌ [HistoryScreen] Error loading history data:', error);
       Alert.alert('Erreur', 'Impossible de charger l\'historique des analyses');
     } finally {
       setLoading(false);
     }
   };
 
+  const loadMoreAnalyses = async () => {
+    if (loadingMore || !hasMore || !user) return;
+
+    try {
+      setLoadingMore(true);
+      console.log('📋 [HistoryScreen] Loading more analyses...');
+      
+      // Charger plus d'analyses depuis le cache ou l'API
+      const moreAnalyses = await DataManager.getUserAnalyses(
+        user.id, 
+        analyses.length + LOAD_MORE_LIMIT, 
+        false // Utiliser le cache si disponible
+      );
+      
+      // Vérifier s'il y en a encore plus
+      const allAnalyses = await DataManager.getUserAnalyses(
+        user.id, 
+        analyses.length + LOAD_MORE_LIMIT + 1, 
+        false
+      );
+      
+      setAnalyses(moreAnalyses);
+      setHasMore(allAnalyses.length > moreAnalyses.length);
+      
+      console.log(`✅ [HistoryScreen] Loaded ${moreAnalyses.length} total analyses`);
+      
+    } catch (error) {
+      console.error('❌ [HistoryScreen] Error loading more analyses:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadAnalyses();
+    await loadHistoryData(true); // Force refresh
     setRefreshing(false);
   };
 
@@ -89,44 +128,49 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
   };
 
   const renderAnalysisItem = ({ item, index }: { item: Analysis; index: number }) => (
-    <EnhancedAnalysisCard 
+    <OptimizedAnalysisCard 
       analysis={item}
       onPress={handleAnalysisPress}
       index={index}
     />
   );
 
-  const renderStatsCards = () => (
-    <View style={styles.statsContainer}>
-      {loading ? (
-        <>
-          <ShimmerStatCard />
-          <ShimmerStatCard />
-          <ShimmerStatCard />
-        </>
-      ) : (
-        <>
-          <View style={[styles.statCard, { backgroundColor: '#3b82f6' }]}>
-            <Ionicons name="bar-chart" size={24} color="white" />
-            <Text style={styles.statNumber}>{stats.totalAnalyses}</Text>
-            <Text style={styles.statLabel}>Analyses</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
-            <Ionicons name="analytics" size={24} color="white" />
-            <Text style={styles.statNumber}>{stats.averageScore}</Text>
-            <Text style={styles.statLabel}>Moyenne</Text>
-          </View>
-          
-          <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
-            <Ionicons name="trophy" size={24} color="white" />
-            <Text style={styles.statNumber}>{stats.bestScore}</Text>
-            <Text style={styles.statLabel}>Meilleur</Text>
-          </View>
-        </>
-      )}
-    </View>
-  );
+  const renderStatsCards = () => {
+    const stats = userStats || { totalAnalyses: 0, averageScore: 0, bestScore: 0 };
+    const isLoadingStats = loading || isLoadingStats;
+    
+    return (
+      <View style={styles.statsContainer}>
+        {isLoadingStats ? (
+          <>
+            <ShimmerStatCard />
+            <ShimmerStatCard />
+            <ShimmerStatCard />
+          </>
+        ) : (
+          <>
+            <View style={[styles.statCard, { backgroundColor: '#3b82f6' }]}>
+              <Ionicons name="bar-chart" size={24} color="white" />
+              <Text style={styles.statNumber}>{stats.totalAnalyses}</Text>
+              <Text style={styles.statLabel}>Analyses</Text>
+            </View>
+            
+            <View style={[styles.statCard, { backgroundColor: '#10b981' }]}>
+              <Ionicons name="analytics" size={24} color="white" />
+              <Text style={styles.statNumber}>{stats.averageScore}</Text>
+              <Text style={styles.statLabel}>Moyenne</Text>
+            </View>
+            
+            <View style={[styles.statCard, { backgroundColor: '#f59e0b' }]}>
+              <Ionicons name="trophy" size={24} color="white" />
+              <Text style={styles.statNumber}>{stats.bestScore}</Text>
+              <Text style={styles.statLabel}>Meilleur</Text>
+            </View>
+          </>
+        )}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -148,6 +192,30 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
           renderItem={renderAnalysisItem}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={renderStatsCards}
+          ListFooterComponent={() => (
+            hasMore ? (
+              <TouchableOpacity 
+                style={styles.loadMoreButton}
+                onPress={loadMoreAnalyses}
+                disabled={loadingMore}
+              >
+                <Ionicons 
+                  name={loadingMore ? "hourglass" : "chevron-down"} 
+                  size={20} 
+                  color="#8b5cf6" 
+                />
+                <Text style={styles.loadMoreText}>
+                  {loadingMore ? 'Chargement...' : 'Voir plus d\'analyses'}
+                </Text>
+              </TouchableOpacity>
+            ) : analyses.length > 0 ? (
+              <View style={styles.endMessage}>
+                <Text style={styles.endMessageText}>
+                  Toutes vos analyses sont affichées
+                </Text>
+              </View>
+            ) : null
+          )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="bar-chart-outline" size={64} color="#94a3b8" />
@@ -240,5 +308,34 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  loadMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'white',
+    marginHorizontal: 20,
+    marginVertical: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    gap: 8,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8b5cf6',
+  },
+  endMessage: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+  },
+  endMessageText: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontStyle: 'italic',
   },
 });

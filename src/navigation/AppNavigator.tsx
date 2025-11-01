@@ -5,18 +5,20 @@ import AnalysisScreen from '../screens/AnalysisScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AnalysisResultScreen from '../screens/AnalysisResultScreen';
-import HomeScreen from '../screens/HomeScreen';
+import OptimizedHomeScreen from '../screens/OptimizedHomeScreen';
 import AuthScreen from '../screens/AuthScreen';
 import HelpScreen from '../screens/HelpScreen';
 import SimpleTabBar from '../components/navigation/SimpleTabBar';
 import HelpButton from '../components/help/HelpButton';
-import { useNavigation, Screen } from '../hooks/useNavigation';
+import { useNavigation, Screen, TabScreen } from '../hooks/useNavigation';
+import { AppDataProvider } from '../contexts/AppDataContext';
 
 export default function AppNavigator() {
   const { 
     currentScreen, 
     analysisId, 
     helpScreen, 
+    activeTab,
     navigate, 
     navigateToHelp, 
     navigateToHelpSection, 
@@ -93,7 +95,10 @@ export default function AppNavigator() {
         return <AnalysisScreen navigation={{ 
           navigate: (screen: string, params?: any) => {
             if (screen === 'AnalysisResult' && params?.analysisId) {
-              navigate('analysisResult', { analysisId: params.analysisId });
+              navigate('analysisResult', { 
+                analysisId: params.analysisId, 
+                fromTab: params?.fromTab || 'camera' 
+              });
             } else {
               navigate(screen as Screen);
             }
@@ -104,7 +109,7 @@ export default function AppNavigator() {
         return <HistoryScreen navigation={{ 
           navigate: (screen: string, params?: any) => {
             if (screen === 'AnalysisResult' && params?.analysisId) {
-              navigate('analysisResult', { analysisId: params.analysisId });
+              navigate('analysisResult', { analysisId: params.analysisId, fromTab: 'history' });
             } else {
               navigate(screen as Screen);
             }
@@ -129,10 +134,10 @@ export default function AppNavigator() {
           onNavigateToSection={navigateToHelpSection}
         />;
       default:
-        return <HomeScreen navigation={{ 
+        return <OptimizedHomeScreen navigation={{ 
           navigate: (screen: string, params?: any) => {
             if (screen === 'AnalysisResult' && params?.analysisId) {
-              navigate('analysisResult', { analysisId: params.analysisId });
+              navigate('analysisResult', { analysisId: params.analysisId, fromTab: 'home' });
             } else {
               navigate(screen as Screen);
             }
@@ -152,28 +157,30 @@ export default function AppNavigator() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Contenu plein écran qui passe derrière la navbar */}
-      <View style={styles.fullScreenContainer}>
-        {renderScreen()}
+    <AppDataProvider>
+      <View style={styles.container}>
+        {/* Contenu plein écran qui passe derrière la navbar */}
+        <View style={styles.fullScreenContainer}>
+          {renderScreen()}
+        </View>
+        
+        {/* Bouton d'aide fixe */}
+        {showHelpButton && (
+          <HelpButton 
+            currentScreen={currentScreen}
+            onPress={() => navigateToHelp(currentScreen)}
+          />
+        )}
+        
+        {/* Navbar flottante en position absolue */}
+        {showNavbar && currentScreen !== 'help' && (
+          <SimpleTabBar 
+            currentScreen={activeTab || currentScreen}
+            onTabPress={(screen) => navigate(screen as Screen)}
+          />
+        )}
       </View>
-      
-      {/* Bouton d'aide fixe */}
-      {showHelpButton && (
-        <HelpButton 
-          currentScreen={currentScreen}
-          onPress={() => navigateToHelp(currentScreen)}
-        />
-      )}
-      
-      {/* Navbar flottante en position absolue */}
-      {showNavbar && currentScreen !== 'help' && (
-        <SimpleTabBar 
-          currentScreen={currentScreen}
-          onTabPress={(screen) => navigate(screen as Screen)}
-        />
-      )}
-    </View>
+    </AppDataProvider>
   );
 }
 

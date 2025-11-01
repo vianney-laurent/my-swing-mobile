@@ -3,6 +3,7 @@ import { SmartVideoProcessor } from '../video/smart-video-processor';
 import { AnalysisJobService, SwingContext, AnalysisJobResponse, JobStatus } from './analysis-job-service';
 import { supabase } from '../supabase/client';
 import { Analysis } from '../../types/profile';
+import { DataManager } from '../cache/data-manager';
 
 export interface UnifiedAnalysisRequest {
   videoUri: string;
@@ -63,6 +64,16 @@ export class UnifiedAnalysisService {
       }
 
       console.log('✅ [Unified] Analysis job submitted:', jobResult.jobId);
+
+      // Pour les analyses synchrones, invalider le cache immédiatement
+      if (jobResult.isSync && jobResult.analysisId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          console.log('🔄 [Unified] Invalidating cache for sync analysis...');
+          await DataManager.invalidateAfterNewAnalysis(user.id);
+        }
+      }
+      // Pour les analyses asynchrones, l'invalidation se fera à la completion
 
       return {
         success: true,
@@ -362,6 +373,10 @@ export class UnifiedAnalysisService {
       }
 
       console.log('✅ [Unified] Analysis deleted successfully');
+      
+      // Invalider le cache utilisateur après suppression
+      await DataManager.invalidateAfterAnalysisDeletion(user.id);
+      
       return true;
 
     } catch (error) {
@@ -375,6 +390,21 @@ export class UnifiedAnalysisService {
    */
   static async getVideoUrl(videoPath: string): Promise<string | null> {
     return VideoUploadService.getVideoUrl(videoPath);
+  }
+
+  /**
+   * Invalide le cache après completion d'une analyse asynchrone
+   */
+  static async invalidateCacheAfterCompletion(): Promise<void> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        console.log('🔄 [Unified] Invalidating cache after analysis completion...');
+        await DataManager.invalidateAfterNewAnalysis(user.id);
+      }
+    } catch (error) {
+      console.error('❌ [Unified] Error invalidating cache:', error);
+    }
   }
 }
 

@@ -10,68 +10,107 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
-import { DataManager, UserStats, WeatherPhrase } from '../lib/cache/data-manager';
-import { UserProfile } from '../lib/profile/mobile-profile-service';
+import { useAppData } from '../contexts/AppDataContext';
+import { DataManager, WeatherPhrase } from '../lib/cache/data-manager';
 import WeatherCard from '../components/WeatherCard';
 import { useSafeBottomPadding } from '../hooks/useSafeBottomPadding';
 import { ShimmerEffect, ShimmerStatCard } from '../components/ui/ShimmerEffect';
 import DailyTipCard from '../components/tips/DailyTipCard';
 
-
 interface HomeScreenProps {
   navigation: any;
 }
 
-export default function HomeScreen({ navigation }: HomeScreenProps) {
+export default function OptimizedHomeScreen({ navigation }: HomeScreenProps) {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { 
+    userProfile, 
+    userStats, 
+    refreshUserData,
+    isLoadingProfile,
+    isLoadingStats 
+  } = useAppData();
+  
   const [refreshing, setRefreshing] = useState(false);
-  const [stats, setStats] = useState<UserStats>({ totalAnalyses: 0, averageScore: 0, bestScore: 0 });
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [greeting, setGreeting] = useState<WeatherPhrase>({ text: 'Bonjour !', emoji: '👋' });
+  const [loadingGreeting, setLoadingGreeting] = useState(true);
   const { containerPaddingBottom } = useSafeBottomPadding();
 
-  console.log('🏠 HomeScreen rendered, user:', user?.email);
+  console.log('🏠 OptimizedHomeScreen rendered, user:', user?.email);
 
   useEffect(() => {
     if (user) {
-      loadHomeData();
+      loadInitialData();
     }
   }, [user]);
 
-  const loadHomeData = async (forceRefresh = false) => {
+  const loadInitialData = async () => {
     try {
-      setLoading(true);
+      // Charger les données utilisateur via le contexte (avec cache)
+      await refreshUserData();
+      
+      // Charger le greeting en parallèle
+      await loadGreeting();
+      
+    } catch (error) {
+      console.error('❌ [OptimizedHomeScreen] Error loading initial data:', error);
+    }
+  };
+
+  const loadGreeting = async (forceRefresh = false) => {
+    try {
+      setLoadingGreeting(true);
       
       if (!user) return;
 
-      // Chargement parallèle optimisé avec cache
-      const homeData = await DataManager.loadHomeData(
-        user.id, 
-        profile?.city, // Utiliser la ville du profil si disponible
-        forceRefresh
-      );
+      // Utiliser la ville du profil si disponible
+      const city = userProfile?.city;
+      const userName = userProfile?.first_name || userProfile?.email?.split('@')[0] || 'Golfeur';
       
-      setProfile(homeData.profile);
-      setStats(homeData.stats);
-      setGreeting(homeData.greeting);
+      if (city) {
+        const weatherGreeting = await DataManager.getWeatherData(city, forceRefresh);
+        if (weatherGreeting) {
+          // Personnaliser avec le nom d'utilisateur
+          setGreeting({
+            ...weatherGreeting,
+            text: weatherGreeting.text.replace('Bonjour !', `Bonjour, ${userName} !`)
+          });
+          return;
+        }
+      }
       
-      console.log('✅ [HomeScreen] Data loaded successfully');
+      // Fallback sans météo
+      setGreeting({
+        text: `Bonjour, ${userName} !`,
+        emoji: '👋'
+      });
       
     } catch (error) {
-      console.error('❌ [HomeScreen] Error loading home data:', error);
+      console.error('❌ [OptimizedHomeScreen] Error loading greeting:', error);
     } finally {
-      setLoading(false);
+      setLoadingGreeting(false);
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadHomeData(true); // Force refresh
-    setRefreshing(false);
+    
+    try {
+      // Forcer le rechargement de toutes les données
+      await Promise.all([
+        refreshUserData(true),
+        loadGreeting(true)
+      ]);
+    } catch (error) {
+      console.error('❌ [OptimizedHomeScreen] Error refreshing:', error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const userName = profile?.first_name || profile?.email?.split('@')[0] || 'Golfeur';
+  const userName = userProfile?.first_name || userProfile?.email?.split('@')[0] || 'Golfeur';
+  const isLoading = isLoadingProfile || isLoadingStats || loadingGreeting;
+  const stats = userStats || { totalAnalyses: 0, averageScore: 0, bestScore: 0 };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -83,7 +122,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header simple pour test */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.welcomeBadge}>
             <Ionicons name="golf" size={16} color="white" />
@@ -135,7 +174,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
         {/* Statistiques */}
         <View style={styles.statsContainer}>
-          {loading ? (
+          {isLoading ? (
             <>
               <ShimmerStatCard />
               <ShimmerStatCard />
@@ -165,7 +204,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
 
         {/* Météo */}
-        {loading ? (
+        {loadingGreeting ? (
           <View style={styles.weatherSection}>
             <View style={styles.weatherShimmer}>
               <ShimmerEffect height={16} width="40%" style={{ marginBottom: 8 }} />
@@ -173,9 +212,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               <ShimmerEffect height={14} width="80%" />
             </View>
           </View>
-        ) : profile?.city ? (
+        ) : userProfile?.city ? (
           <View style={styles.weatherSection}>
-            <WeatherCard city={profile.city} />
+            <WeatherCard city={userProfile.city} />
           </View>
         ) : null}
 
@@ -231,7 +270,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <DailyTipCard 
           onTipPress={(tip) => {
             console.log('💡 Tip pressed:', tip.title);
-            // Optionnel: naviguer vers une page de détail du conseil
           }}
         />
       </ScrollView>
@@ -239,6 +277,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   );
 }
 
+// Réutiliser les mêmes styles que HomeScreen
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -473,6 +512,4 @@ const styles = StyleSheet.create({
   categorySubtitleDisabled: {
     color: '#94a3b8',
   },
-
-
 });

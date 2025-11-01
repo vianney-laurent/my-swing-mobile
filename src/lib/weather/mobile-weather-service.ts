@@ -185,14 +185,20 @@ export class MobileWeatherService {
   }
 
   /**
-   * Génère un greeting personnalisé avec météo
+   * Génère un greeting personnalisé avec météo (optimisé avec fallback rapide)
    */
   static async generatePersonalizedGreeting(userName: string, city?: string): Promise<WeatherPhrase> {
     try {
       let weather: WeatherData | null = null;
       
       if (city) {
-        weather = await this.getWeather(city);
+        // Timeout rapide pour éviter d'attendre trop longtemps
+        const weatherPromise = this.getWeather(city);
+        const timeoutPromise = new Promise<WeatherData | null>((resolve) => {
+          setTimeout(() => resolve(null), 3000); // 3 secondes max
+        });
+        
+        weather = await Promise.race([weatherPromise, timeoutPromise]);
       }
 
       return this.generateGolfPhrase(weather, userName);
